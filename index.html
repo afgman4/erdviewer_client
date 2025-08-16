@@ -9,26 +9,135 @@
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* CSS Custom Properties for Theming */
+        :root {
+            /* Light Theme (Default) */
+            --bg-body: #f4f4f9;
+            --text-color: #1f2937;
+            --bg-sidebar: #fff;
+            --border-sidebar: #ddd;
+            --bg-toolbar: #fff;
+            --border-toolbar: #ddd;
+            --toolbar-text: #666;
+            --btn-neutral-bg: #e5e7eb;
+            --btn-neutral-text: #4b5563;
+            --btn-neutral-hover-bg: #d1d5db;
+            --bg-erd-container: #fff;
+            --bg-table-box: #f9fafb;
+            --border-table-box: #e5e7eb;
+            --bg-table-header: #3b82f6;
+            --text-table-header: #fff;
+            --border-table-row: #e5e7eb;
+            --bg-table-head: #f3f4f6;
+            --text-table-head: #4b5563;
+            --text-pk: #ef4444;
+            --text-fk: #3b82f6;
+            --link-color: #888;
+            --modal-bg: #fff;
+            --modal-border: #ccc;
+            --modal-text: #333;
+        }
+
+        /* Dark Theme */
+        body.theme-dark-theme {
+            --bg-body: #1f2937;
+            --text-color: #e5e7eb;
+            --bg-sidebar: #374151;
+            --border-sidebar: #4b5563;
+            --bg-toolbar: #374151;
+            --border-toolbar: #4b5563;
+            --toolbar-text: #9ca3af;
+            --btn-neutral-bg: #4b5563;
+            --btn-neutral-text: #e5e7eb;
+            --btn-neutral-hover-bg: #6b7280;
+            --bg-erd-container: #111827;
+            --bg-table-box: #374151;
+            --border-table-box: #4b5563;
+            --bg-table-header: #2563eb;
+            --text-table-header: #fff;
+            --border-table-row: #4b5563;
+            --bg-table-head: #1f2937;
+            --text-table-head: #9ca3af;
+            --text-pk: #f87171;
+            --text-fk: #60a5fa;
+            --link-color: #9ca3af;
+            --modal-bg: #4b5563;
+            --modal-border: #6b7280;
+            --modal-text: #e5e7eb;
+        }
+
+        /* Darcula Theme */
+        body.theme-darcula-theme {
+            --bg-body: #2b2b2b;
+            --text-color: #a9b7c6;
+            --bg-sidebar: #3c3f41;
+            --border-sidebar: #555;
+            --bg-toolbar: #3c3f41;
+            --border-toolbar: #555;
+            --toolbar-text: #a9b7c6;
+            --btn-neutral-bg: #555;
+            --btn-neutral-text: #a9b7c6;
+            --btn-neutral-hover-bg: #666;
+            --bg-erd-container: #212121;
+            --bg-table-box: #3c3f41;
+            --border-table-box: #555;
+            --bg-table-header: #4b6e82;
+            --text-table-header: #fff;
+            --border-table-row: #555;
+            --bg-table-head: #303335;
+            --text-table-head: #9ca3af;
+            --text-pk: #cc7832;
+            --text-fk: #9876aa;
+            --link-color: #a9b7c6;
+            --modal-bg: #3c3f41;
+            --modal-border: #555;
+            --modal-text: #a9b7c6;
+        }
+
+        /* Monokai Theme */
+        body.theme-monokai-theme {
+            --bg-body: #272822;
+            --text-color: #f8f8f2;
+            --bg-sidebar: #3c3d36;
+            --border-sidebar: #5d5d5d;
+            --bg-toolbar: #3c3d36;
+            --border-toolbar: #5d5d5d;
+            --toolbar-text: #e6db74;
+            --btn-neutral-bg: #5d5d5d;
+            --btn-neutral-text: #f8f8f2;
+            --btn-neutral-hover-bg: #757575;
+            --bg-erd-container: #1b1c18;
+            --bg-table-box: #3c3d36;
+            --border-table-box: #5d5d5d;
+            --bg-table-header: #ae81ff;
+            --text-table-header: #fff;
+            --border-table-row: #5d5d5d;
+            --bg-table-head: #272822;
+            --text-table-head: #e6db74;
+            --text-pk: #fd971f;
+            --text-fk: #66d9ef;
+            --link-color: #e5e7eb;
+            --modal-bg: #3c3d36;
+            --modal-border: #5d5d5d;
+            --modal-text: #f8f8f2;
+        }
+
+        /* General styles using variables */
         body {
             font-family: 'Inter', sans-serif;
             margin: 0;
             padding: 0;
             display: flex;
             height: 100vh;
-            background-color: #f4f4f9;
-            color: #1f2937; /* gray-800 */
+            background-color: var(--bg-body);
+            color: var(--text-color);
             transition: background-color 0.3s, color 0.3s;
-        }
-
-        body.dark-mode {
-            background-color: #1f2937; /* gray-800 */
-            color: #e5e7eb; /* gray-200 */
         }
 
         #sidebar {
             width: 250px;
-            background-color: #fff;
-            border-right: 1px solid #ddd;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-sidebar);
             padding: 20px;
             overflow-y: auto;
             display: flex;
@@ -37,11 +146,6 @@
             transition: background-color 0.3s, border-color 0.3s;
         }
         
-        body.dark-mode #sidebar {
-            background-color: #374151; /* gray-700 */
-            border-right: 1px solid #4b5563; /* gray-600 */
-        }
-
         #main-content {
             flex-grow: 1;
             display: flex;
@@ -51,29 +155,20 @@
 
         #toolbar {
             padding: 10px;
-            background-color: #fff;
-            border-bottom: 1px solid #ddd;
+            background-color: var(--bg-toolbar);
+            border-bottom: 1px solid var(--border-toolbar);
             display: flex;
             align-items: center;
             justify-content: flex-end;
             gap: 10px;
             transition: background-color 0.3s, border-color 0.3s;
         }
-
-        body.dark-mode #toolbar {
-            background-color: #374151; /* gray-700 */
-            border-bottom: 1px solid #4b5563; /* gray-600 */
-        }
         
         #toolbar-left {
             margin-right: auto;
             font-size: 14px;
-            color: #666;
+            color: var(--toolbar-text);
             transition: color 0.3s;
-        }
-        
-        body.dark-mode #toolbar-left {
-            color: #9ca3af; /* gray-400 */
         }
 
         /* Common button styles */
@@ -88,41 +183,29 @@
         
         /* Neutral button (zoom in/out) */
         .neutral-btn {
-            background-color: #e5e7eb; /* gray-200 */
-            color: #4b5563; /* gray-700 */
+            background-color: var(--btn-neutral-bg);
+            color: var(--btn-neutral-text);
         }
         .neutral-btn:hover {
-            background-color: #d1d5db; /* gray-300 */
+            background-color: var(--btn-neutral-hover-bg);
         }
         
-        body.dark-mode .neutral-btn {
-            background-color: #4b5563; /* gray-600 */
-            color: #e5e7eb; /* gray-200 */
-        }
-        body.dark-mode .neutral-btn:hover {
-            background-color: #6b7280; /* gray-500 */
-        }
-
         /* Accent button (save) */
         .primary-btn {
-            background-color: #3b82f6; /* blue-500 */
+            background-color: var(--text-fk);
             color: #fff;
         }
         .primary-btn:hover {
-            background-color: #2563eb; /* blue-600 */
+            background-color: color-mix(in srgb, var(--text-fk) 80%, black);
         }
 
         #erd-container {
             flex-grow: 1;
             padding: 20px;
             position: relative;
-            background-color: #fff;
+            background-color: var(--bg-erd-container);
             overflow: auto;
             transition: background-color 0.3s;
-        }
-
-        body.dark-mode #erd-container {
-            background-color: #111827; /* gray-900 */
         }
 
         #pan-container {
@@ -149,10 +232,9 @@
             z-index: 2;
         }
 
-        /* Updated table-box style */
         .table-box {
-            background-color: #f9fafb; /* light gray background */
-            border: 1px solid #e5e7eb; /* light gray border */
+            background-color: var(--bg-table-box);
+            border: 1px solid var(--border-table-box);
             border-radius: 12px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
             padding: 0;
@@ -166,18 +248,9 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
         }
 
-        body.dark-mode .table-box {
-            background-color: #374151; /* gray-700 */
-            border: 1px solid #4b5563; /* gray-600 */
-        }
-        body.dark-mode .table-box:hover {
-             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
-        }
-
-        /* Updated table title (h4) style */
         .table-box h4 {
-            background-color: #3b82f6; /* blue-500 background */
-            color: #fff; /* white text */
+            background-color: var(--bg-table-header);
+            color: var(--text-table-header);
             margin: 0;
             padding: 10px 15px;
             border-top-left-radius: 12px;
@@ -186,10 +259,6 @@
             font-weight: 700;
             cursor: grab;
             transition: background-color 0.3s;
-        }
-        
-        body.dark-mode .table-box h4 {
-            background-color: #2563eb; /* blue-600 */
         }
         
         .table-box table {
@@ -203,58 +272,39 @@
             padding: 8px 15px;
             text-align: left;
             font-size: 12px;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid var(--border-table-row);
             transition: border-color 0.3s;
         }
 
-        body.dark-mode .table-box th,
-        body.dark-mode .table-box td {
-            border-bottom: 1px solid #4b5563; /* gray-600 */
-        }
-
         .table-box th {
-            background-color: #f3f4f6; /* very light gray */
+            background-color: var(--bg-table-head);
             font-weight: 600;
-            color: #4b5563;
+            color: var(--text-table-head);
             transition: background-color 0.3s, color 0.3s;
         }
-
-        body.dark-mode .table-box th {
-            background-color: #1f2937; /* gray-800 */
-            color: #9ca3af; /* gray-400 */
-        }
         
-        /* Remove bottom border of the last row */
         .table-box tr:last-child td {
             border-bottom: none;
         }
         
         .pk-row td:first-child {
             font-weight: bold;
-            color: #ef4444; /* red-500 */
+            color: var(--text-pk);
         }
 
         .fk-row td:first-child {
             font-weight: bold;
-            color: #3b82f6; /* blue-500 */
+            color: var(--text-fk);
         }
 
         .link-line {
-            stroke: #888;
+            stroke: var(--link-color);
             stroke-width: 2;
             transition: stroke 0.3s;
         }
         
-        body.dark-mode .link-line {
-            stroke: #9ca3af; /* gray-400 */
-        }
-
         .link-head {
-            fill: #888;
-        }
-        
-        body.dark-mode .link-head {
-            fill: #9ca3af; /* gray-400 */
+            fill: var(--link-color);
         }
 
         /* Custom Modal Styling */
@@ -263,28 +313,22 @@
             left: 50%;
             top: 50%;
             transform: translate(-50%, -50%);
-            background-color: #fff;
+            background-color: var(--modal-bg);
             padding: 24px;
-            border: 1px solid #ccc;
+            border: 1px solid var(--modal-border);
             border-radius: 12px;
             box-shadow: 0 8px 16px rgba(0,0,0,0.2);
             z-index: 2000;
             text-align: center;
             font-size: 16px;
             font-weight: 500;
-            color: #333;
+            color: var(--modal-text);
             animation: fadein 0.3s ease-out;
         }
 
-        body.dark-mode .modal {
-            background-color: #4b5563; /* gray-600 */
-            color: #e5e7eb; /* gray-200 */
-            border: 1px solid #6b7280; /* gray-500 */
-        }
-        
         @keyframes fadein {
             from { opacity: 0; transform: translate(-50%, -60%); }
-            to   { opacity: 1; transform: translate(-50%, -50%); }
+            to   { opacity: 1; transform: translate(-50%, -50%); }
         }
 
         .modal.fadeout {
@@ -293,7 +337,7 @@
 
         @keyframes fadeout {
             from { opacity: 1; transform: translate(-50%, -50%); }
-            to   { opacity: 0; transform: translate(-50%, -60%); }
+            to   { opacity: 0; transform: translate(-50%, -60%); }
         }
     </style>
 </head>
@@ -304,6 +348,12 @@
         <select id="schema-select" class="w-full p-2 border border-gray-300 rounded-lg bg-white text-gray-800 transition-colors" onchange="loadTables(this.value)">
             <option value="">Select a database</option>
         </select>
+        
+        <h3 class="font-bold text-lg mb-2 mt-4">Themes</h3>
+        <select id="theme-select" class="w-full p-2 border border-gray-300 rounded-lg bg-white text-gray-800 transition-colors" onchange="applyTheme(this.value)">
+            <!-- Options populated by JS -->
+        </select>
+        
         <h3 class="font-bold text-lg mb-2 mt-4">Tables</h3>
         <p class="text-sm text-gray-500">
             테이블을 클릭하면 이동할 수 있습니다.
@@ -311,20 +361,15 @@
     </div>
 
     <div id="main-content">
-        <div id="toolbar" class="flex items-center justify-end gap-2 p-3 bg-white border-b border-gray-200">
-            <span id="toolbar-left" class="mr-auto text-sm text-gray-600">Powered by Sherman</span>
+        <div id="toolbar" class="flex items-center justify-end gap-2 p-3 border-b">
+            <span id="toolbar-left" class="mr-auto text-sm">Powered by Sherman</span>
             
-            <button id="theme-toggle" class="toolbar-btn neutral-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.182a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.06l1.59-1.591zM12 15a3 3 0 100-6 3 3 0 000 6zM4.757 17.303a.75.75 0 001.061 1.06l1.591-1.59a.75.75 0 00-1.06-1.06l-1.59 1.591zM21.75 12a.75.75 0 00-.75-.75h-2.25a.75.75 0 000 1.5h2.25a.75.75 0 00.75-.75zM17.303 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.06 1.06l1.591 1.59zM3 12a.75.75 0 00.75.75h2.25a.75.75 0 000-1.5H3.75A.75.75 0 003 12zM6.182 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 21.75a.75.75 0 00.75-.75v-2.25a.75.75 0 00-1.5 0v2.25c0 .414.336.75.75.75z" />
-                </svg>
-            </button>
             <button id="zoom-in" class="toolbar-btn neutral-btn">+</button>
             <button id="zoom-out" class="toolbar-btn neutral-btn">-</button>
             <button id="zoom-reset" class="toolbar-btn neutral-btn">Reset</button>
             <button id="save-coords-btn" class="toolbar-btn primary-btn">좌표 저장</button>
         </div>
-        <div id="erd-container" class="relative p-5 bg-gray-50 overflow-auto">
+        <div id="erd-container" class="relative p-5 overflow-auto">
             <div id="pan-container" class="absolute top-0 left-0 w-full h-full transform-origin-top-left cursor-grab">
                 <svg id="link-canvas" class="absolute top-0 left-0 w-full h-full pointer-events-none z-10"></svg>
                 <div id="erd-canvas" class="relative z-20"></div>
@@ -335,6 +380,7 @@
     <script>
         const API_BASE_URL = 'http://localhost:3000/api';
         const schemaSelect = document.getElementById('schema-select');
+        const themeSelect = document.getElementById('theme-select');
         const erdContainer = document.getElementById('erd-container');
         const panContainer = document.getElementById('pan-container');
         const erdCanvas = document.getElementById('erd-canvas');
@@ -343,7 +389,6 @@
         const zoomOutBtn = document.getElementById('zoom-out');
         const zoomResetBtn = document.getElementById('zoom-reset');
         const saveCoordsBtn = document.getElementById('save-coords-btn');
-        const themeToggleBtn = document.getElementById('theme-toggle');
 
         let allTablesData = {};
         let currentScale = 1;
@@ -355,6 +400,40 @@
         let initialMouseX, initialMouseY;
         let startPanX, startPanY;
         let currentPanX = 0, currentPanY = 0;
+
+        const themes = {
+            'light-theme': 'Light Theme',
+            'dark-theme': 'Dark Theme',
+            'darcula-theme': 'Darcula',
+            'monokai-theme': 'Monokai'
+        };
+
+        function populateThemes() {
+            for (const key in themes) {
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = themes[key];
+                themeSelect.appendChild(option);
+            }
+        }
+
+        function applyTheme(themeName) {
+            const body = document.body;
+            // Remove all theme classes first
+            for (const key in themes) {
+                body.classList.remove(`theme-${key}`);
+            }
+            body.classList.add(`theme-${themeName}`);
+            localStorage.setItem('theme', themeName);
+            drawLinks(); // Re-draw links to update their color
+        }
+
+        function initializeTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light-theme';
+            const body = document.body;
+            body.classList.add(`theme-${savedTheme}`);
+            themeSelect.value = savedTheme;
+        }
 
         async function loadSchemas() {
             try {
@@ -533,8 +612,8 @@
             linkCanvas.innerHTML = '';
             const tables = Object.values(allTablesData);
 
-            // Get the stroke color based on the current theme
-            const linkColor = document.body.classList.contains('dark-mode') ? '#9ca3af' : '#888';
+            // Get the stroke color from CSS variable
+            const linkColor = getComputedStyle(document.body).getPropertyValue('--link-color').trim();
 
             const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
             marker.setAttribute('id', 'arrowhead');
@@ -666,30 +745,11 @@
             }, 2000);
         }
 
-        function toggleTheme() {
-            const isDarkMode = document.body.classList.toggle('dark-mode');
-            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-            
-            // Re-draw links to update their color
-            drawLinks();
-            
-            // Update button icon (optional)
-            const icon = themeToggleBtn.querySelector('svg path');
-            if (isDarkMode) {
-                // Moon icon
-                icon.setAttribute('d', 'M21.75 12a.75.75 0 01-.75-.75v-2.25a.75.75 0 000 1.5h2.25a.75.75 0 00.75-.75zM17.303 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.06 1.06l1.591 1.59zM3 12a.75.75 0 00.75.75h2.25a.75.75 0 000-1.5H3.75A.75.75 0 003 12zM6.182 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 21.75a.75.75 0 00.75-.75v-2.25a.75.75 0 00-1.5 0v2.25c0 .414.336.75.75.75zM4.757 17.303a.75.75 0 001.061 1.06l1.591-1.59a.75.75 0 00-1.06-1.06l-1.59 1.591zM18.894 6.182a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.06l1.59-1.591zM12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0z');
-            } else {
-                // Sun icon
-                icon.setAttribute('d', 'M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.182a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.06l1.59-1.591zM12 15a3 3 0 100-6 3 3 0 000 6zM4.757 17.303a.75.75 0 001.061 1.06l1.591-1.59a.75.75 0 00-1.06-1.06l-1.59 1.591zM21.75 12a.75.75 0 00-.75-.75h-2.25a.75.75 0 000 1.5h2.25a.75.75 0 00.75-.75zM17.303 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.06 1.06l1.591 1.59zM3 12a.75.75 0 00.75.75h2.25a.75.75 0 000-1.5H3.75A.75.75 0 003 12zM6.182 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 21.75a.75.75 0 00.75-.75v-2.25a.75.75 0 00-1.5 0v2.25c0 .414.336.75.75.75z');
-            }
-        }
-
         // Event listeners
         zoomInBtn.addEventListener('click', zoomIn);
         zoomOutBtn.addEventListener('click', zoomOut);
         zoomResetBtn.addEventListener('click', zoomReset);
         saveCoordsBtn.addEventListener('click', saveTablePositions);
-        themeToggleBtn.addEventListener('click', toggleTheme);
         
         erdContainer.addEventListener('mousedown', (e) => {
             // 테이블 내부를 클릭하면 패닝이 발생하지 않도록 합니다.
@@ -750,17 +810,8 @@
             panContainer.style.cursor = 'grab';
         });
 
-        // Load theme from localStorage on page load
-        function initializeTheme() {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') {
-                document.body.classList.add('dark-mode');
-            } else {
-                document.body.classList.remove('dark-mode');
-            }
-        }
-        
         // Initialize
+        populateThemes();
         initializeTheme();
         loadSchemas();
     </script>
