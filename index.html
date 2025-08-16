@@ -1,88 +1,483 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>DB Schema Viewer</title>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERD Viewer (HTML/CSS)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #f4f4f9;
+        }
+
+        #sidebar {
+            width: 250px;
+            background-color: #fff;
+            border-right: 1px solid #ddd;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #toolbar {
+            padding: 10px;
+            background-color: #fff;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        #toolbar button {
+            padding: 5px 10px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #e9e9e9;
+        }
+
+        #erd-container {
+            flex-grow: 1;
+            padding: 20px;
+            overflow: auto; 
+            position: relative;
+            background-color: #fff;
+        }
+
+        #erd-canvas {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            transform-origin: 0 0;
+            cursor: grab;
+        }
+
+        #erd-canvas.grabbing {
+            cursor: grabbing;
+        }
+        
+        .table-box {
+            border: 1px solid #333;
+            background-color: #f9f9f9;
+            padding: 10px;
+            margin: 10px;
+            display: inline-block;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+            position: absolute;
+            cursor: move;
+        }
+
+        .table-box h4 {
+            margin: 0 0 10px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ccc;
+        }
+        
+        .column-item {
+            font-size: 12px;
+            margin: 2px 0;
+            white-space: nowrap;
+        }
+        
+        .pk-text {
+            color: red;
+            font-weight: bold;
+        }
+
+        .fk-text {
+            color: blue;
+            font-weight: bold;
+        }
+
+
+#erd-container {
+    flex-grow: 1;
+    padding: 20px;
+    overflow: auto;
+    position: relative;
+    background-color: #fff;
+}
+
+#link-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* SVG 클릭을 무시하여 아래에 있는 div를 클릭할 수 있게 함 */
+    z-index: 1; /* 테이블보다 아래에 위치 */
+}
+
+#erd-canvas {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    transform-origin: 0 0;
+    cursor: grab;
+    z-index: 2; /* SVG보다 위에 위치 */
+}
+
+.link-line {
+    stroke: #888;
+    stroke-width: 2;
+}
+
+.link-head {
+    fill: #888;
+}        
+    </style>
 </head>
 <body>
-    <h1>MySQL Schema Viewer</h1>
-    <div id="schema-list"></div>
-    <div id="table-list"></div>
-    <div id="column-list"></div>
+
+    <div id="sidebar">
+        <h3>Databases</h3>
+        <select id="schema-select" onchange="loadTables(this.value)">
+            <option value="">Select a database</option>
+        </select>
+        <h3>Tables</h3>
+        <p>
+            테이블을 클릭하면 이동할 수 있습니다.
+        </p>
+    </div>
+
+    <div id="main-content">        
+        <div id="main-content">
+            <div id="toolbar">
+                <button id="zoom-in">Zoom In (+)</button>
+                <button id="zoom-out">Zoom Out (-)</button>
+                <button id="zoom-reset">Reset Zoom</button>
+                <button id="save-coords-btn">좌표 저장</button>
+            </div>
+            <div id="erd-container">
+                <svg id="link-canvas"></svg>
+                <div id="erd-canvas"></div>
+            </div>
+        </div>
+    </div>
 
     <script>
-        // 1. 스키마 목록 불러오기
-        fetch('http://localhost:3000/api/schemas')
-            .then(res => res.json())
-            .then(schemas => {
-                d3.select("#schema-list")
-                  .selectAll("button")
-                  .data(schemas)
-                  .enter()
-                  .append("button")
-                  .text(d => d)
-                  .on("click", function(event, d) { 
-                     loadTables(d);  // d가 schema 이름
-                  });
-            });
 
-        // 2. 테이블 목록 불러오기
-        function loadTables(schemaName) {
-            fetch(`http://localhost:3000/api/tables/${schemaName}`)
-                .then(res => res.json())
-                .then(tables => {
-                    d3.select("#table-list").html(""); // 초기화
-                    d3.select("#column-list").html(""); // 초기화
 
-                    d3.select("#table-list")
-                      .selectAll("button")
-                      .data(tables)
-                      .enter()
-                      .append("button")
-                      .text(d => d)
-                      .on("click", function(event, d) { 
-                        loadColumns(schemaName, d);  // d가 table 이름
-                    });
-                });
-        }
+const API_BASE_URL = 'http://localhost:3000/api';
+const schemaSelect = document.getElementById('schema-select');
+const erdCanvas = document.getElementById('erd-canvas');
+const linkCanvas = document.getElementById('link-canvas');
+const zoomInBtn = document.getElementById('zoom-in');
+const zoomOutBtn = document.getElementById('zoom-out');
+const zoomResetBtn = document.getElementById('zoom-reset');
+const saveCoordsBtn = document.getElementById('save-coords-btn');
 
-        // 3. 컬럼 목록 불러오기
-        function loadColumns(schemaName, tableName) {
-            fetch(`http://localhost:3000/api/columns/${schemaName}/${tableName}`)
+let allTablesData = {};
+let currentScale = 1;
+const zoomStep = 0.2;
+let isDragging = false;
+let activeElement = null;
+let initialX, initialY;
+
+// 초기 스키마 로딩
+async function loadSchemas() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/schemas`);
+        const schemas = await response.json();
+        schemas.forEach(schema => {
+            const option = document.createElement('option');
+            option.value = schema;
+            option.textContent = schema;
+            schemaSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Failed to load schemas:', error);
+    }
+}
+
+// 특정 스키마의 테이블 목록 로딩 및 그리기
+async function loadTables(schema) {
+    erdCanvas.innerHTML = '';
+    linkCanvas.innerHTML = '';
+    allTablesData = {};
+    erdCanvas.style.transform = `scale(1)`;
+    erdCanvas.style.width = `100%`;
+    erdCanvas.style.height = `100%`;
+    erdCanvas.style.left = '20px';
+    erdCanvas.style.top = '20px';
+    currentScale = 1;
+
+    if (!schema) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/tables/${schema}`);
+        const tables = await response.json();
+
+        const tablePromises = tables.map(table =>
+            fetch(`${API_BASE_URL}/columns/${schema}/${table}`)
                 .then(res => res.json())
                 .then(columns => {
-                    d3.select("#column-list").html("");
-                    const table = d3.select("#column-list")
-                                    .append("table")
-                                    .style("border-collapse", "collapse")
-                                    .style("border", "1px solid black");
+                    allTablesData[table] = {
+                        name: table,
+                        columns: columns,
+                        position: { x: 0, y: 0 },
+                        dimensions: { width: 0, height: 0 }
+                    };
+                })
+        );
 
-                    // 테이블 헤더
-                    table.append("thead").append("tr")
-                        .selectAll("th")
-                        .data(["Column Name", "Type", "Size"])
-                        .enter()
-                        .append("th")
-                        .text(d => d)
-                        .style("border", "1px solid black")
-                        .style("padding", "5px");
+        await Promise.all(tablePromises);
+        drawAllTablesAndLinks(schema);
 
-                    // 테이블 내용
-                    table.append("tbody")
-                        .selectAll("tr")
-                        .data(columns)
-                        .enter()
-                        .append("tr")
-                        .selectAll("td")
-                        .data(d => [d.name, d.type, d.size])
-                        .enter()
-                        .append("td")
-                        .text(d => d)
-                        .style("border", "1px solid black")
-                        .style("padding", "5px");
-                });
+    } catch (error) {
+        console.error('Failed to load tables:', error);
+    }
+}
+
+// 모든 테이블 그리기 및 위치 정렬
+function drawAllTablesAndLinks(schema) {
+    erdCanvas.innerHTML = '';
+    linkCanvas.innerHTML = '';
+
+    const tables = Object.keys(allTablesData);
+    const tablesPerRow = 5;
+    const horizontalSpacing = 300;
+    const verticalSpacing = 200;
+
+    // localStorage에서 좌표 불러오기
+    const savedPositions = JSON.parse(localStorage.getItem(`erd-coords-${schema}`)) || {};
+
+    tables.forEach((tableName, index) => {
+        const tableData = allTablesData[tableName];
+        const tableBox = document.createElement('div');
+        tableBox.classList.add('table-box');
+        tableBox.id = `table-${tableName}`;
+        
+        let xPos, yPos;
+        // 저장된 좌표가 있으면 사용, 없으면 기본 정렬 적용
+        if (savedPositions[tableName]) {
+            xPos = savedPositions[tableName].x;
+            yPos = savedPositions[tableName].y;
+        } else {
+            const row = Math.floor(index / tablesPerRow);
+            const col = index % tablesPerRow;
+            xPos = col * horizontalSpacing;
+            yPos = row * verticalSpacing;
         }
+
+        tableData.position = { x: xPos, y: yPos };
+        tableBox.style.left = `${xPos}px`;
+        tableBox.style.top = `${yPos}px`;
+
+        const tableHeader = document.createElement('h4');
+        tableHeader.textContent = tableName;
+        tableBox.appendChild(tableHeader);
+
+        const ul = document.createElement('ul');
+        tableData.columns.forEach(col => {
+            const li = document.createElement('li');
+            li.classList.add('column-item');
+            li.dataset.column = col.name;
+
+            let text = col.name;
+            let classType = '';
+            if (col.is_primary_key === 'true') {
+                text += ' (PK)';
+                classType = 'pk-text';
+            } else if (col.is_foreign_key === 'true') {
+                text += ` (FK)`;
+                classType = 'fk-text';
+            }
+            
+            const typeText = `${col.type}${col.size ? `(${col.size})` : ''} - ${col.is_nullable}`;
+            li.innerHTML = `<span class="${classType}">${text}</span> <span style="font-size: 10px;">(${typeText})</span>`;
+            
+            if (col.is_foreign_key === 'true' && col.referenced_table) {
+                li.dataset.fkTable = col.referenced_table;
+                li.dataset.fkColumn = col.referenced_column;
+            }
+            
+            ul.appendChild(li);
+        });
+        tableBox.appendChild(ul);
+        
+        tableBox.addEventListener('mousedown', dragStart);
+        erdCanvas.appendChild(tableBox);
+
+        tableData.dimensions.width = tableBox.offsetWidth;
+        tableData.dimensions.height = tableBox.offsetHeight;
+    });
+
+    drawLinks();
+}
+
+function drawLinks() {
+    linkCanvas.innerHTML = '';
+    const tables = Object.values(allTablesData);
+
+    const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+    marker.setAttribute('id', 'arrowhead');
+    marker.setAttribute('viewBox', '0 0 10 10');
+    marker.setAttribute('refX', '5');
+    marker.setAttribute('refY', '5');
+    marker.setAttribute('markerWidth', '6');
+    marker.setAttribute('markerHeight', '6');
+    marker.setAttribute('orient', 'auto');
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+    path.setAttribute('fill', '#888');
+    marker.appendChild(path);
+    linkCanvas.appendChild(marker);
+
+    tables.forEach(table => {
+        const fkColumns = table.columns.filter(col => col.is_foreign_key === 'true');
+        
+        fkColumns.forEach(fkCol => {
+            const fkTable = allTablesData[fkCol.referenced_table];
+            if (!fkTable) return;
+
+            const startColEl = document.getElementById(`table-${table.name}`).querySelector(`[data-column='${fkCol.name}']`);
+            const endColEl = document.getElementById(`table-${fkTable.name}`).querySelector(`[data-column='${fkCol.referenced_column}']`);
+
+            if (!startColEl || !endColEl) return;
+
+            const startPos = getAbsoluteElementCenter(startColEl);
+            const endPos = getAbsoluteElementCenter(endColEl);
+            
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute('x1', startPos.x);
+            line.setAttribute('y1', startPos.y);
+            line.setAttribute('x2', endPos.x);
+            line.setAttribute('y2', endPos.y);
+            line.setAttribute('stroke', '#888');
+            line.setAttribute('stroke-width', '2');
+            line.setAttribute('marker-end', 'url(#arrowhead)');
+            
+            linkCanvas.appendChild(line);
+        });
+    });
+}
+
+function getAbsoluteElementCenter(el) {
+    const rect = el.getBoundingClientRect();
+    const erdRect = erdCanvas.getBoundingClientRect();
+    
+    const x = (rect.left + rect.width / 2 - erdRect.left) + (parseFloat(erdCanvas.style.left) || 0);
+    const y = (rect.top + rect.height / 2 - erdRect.top) + (parseFloat(erdCanvas.style.top) || 0);
+
+    return { x: x, y: y };
+}
+
+// 확대/축소 기능
+function zoomIn() {
+    currentScale += zoomStep;
+    erdCanvas.style.transform = `scale(${currentScale})`;
+    erdCanvas.style.width = `${100 * currentScale}%`;
+    erdCanvas.style.height = `${100 * currentScale}%`;
+    drawLinks();
+}
+
+function zoomOut() {
+    if (currentScale > zoomStep) {
+        currentScale -= zoomStep;
+        erdCanvas.style.transform = `scale(${currentScale})`;
+        erdCanvas.style.width = `${100 * currentScale}%`;
+        erdCanvas.style.height = `${100 * currentScale}%`;
+        drawLinks();
+    }
+}
+
+function zoomReset() {
+    currentScale = 1;
+    erdCanvas.style.transform = `scale(${currentScale})`;
+    erdCanvas.style.width = '100%';
+    erdCanvas.style.height = '100%';
+    drawLinks();
+}
+
+// 드래그 기능 구현
+function dragStart(e) {
+    activeElement = e.target.closest('.table-box');
+    if (!activeElement) return;
+
+    e.preventDefault();
+    isDragging = true;
+    
+    const rect = activeElement.getBoundingClientRect();
+    const erdRect = erdCanvas.getBoundingClientRect();
+    
+    initialX = (e.clientX - erdRect.left) / currentScale - (parseFloat(activeElement.style.left) || 0);
+    initialY = (e.clientY - erdRect.top) / currentScale - (parseFloat(activeElement.style.top) || 0);
+    
+    activeElement.style.cursor = 'grabbing';
+}
+
+function drag(e) {
+    if (!isDragging || !activeElement) return;
+    
+    const erdRect = erdCanvas.getBoundingClientRect();
+    const newX = (e.clientX - erdRect.left) / currentScale - initialX;
+    const newY = (e.clientY - erdRect.top) / currentScale - initialY;
+    
+    activeElement.style.left = `${newX}px`;
+    activeElement.style.top = `${newY}px`;
+    
+    const tableName = activeElement.id.replace('table-', '');
+    allTablesData[tableName].position.x = newX;
+    allTablesData[tableName].position.y = newY;
+    
+    drawLinks();
+}
+
+function dragEnd(e) {
+    isDragging = false;
+    if (activeElement) {
+        activeElement.style.cursor = 'move';
+        activeElement = null;
+    }
+}
+
+// **좌표 저장 기능 추가**
+function saveTablePositions() {
+    const currentSchema = schemaSelect.value;
+    if (!currentSchema) {
+        alert("저장할 스키마를 선택해주세요.");
+        return;
+    }
+    
+    const positionsToSave = {};
+    for (const tableName in allTablesData) {
+        positionsToSave[tableName] = {
+            x: allTablesData[tableName].position.x,
+            y: allTablesData[tableName].position.y
+        };
+    }
+    
+    localStorage.setItem(`erd-coords-${currentSchema}`, JSON.stringify(positionsToSave));
+    alert("테이블 위치가 성공적으로 저장되었습니다!");
+}
+
+// 이벤트 리스너 연결
+zoomInBtn.addEventListener('click', zoomIn);
+zoomOutBtn.addEventListener('click', zoomOut);
+zoomResetBtn.addEventListener('click', zoomReset);
+saveCoordsBtn.addEventListener('click', saveTablePositions);
+
+document.addEventListener('mousedown', dragStart);
+document.addEventListener('mousemove', drag);
+document.addEventListener('mouseup', dragEnd);
+
+// 페이지 로드 시 스키마 로딩
+loadSchemas();
+
     </script>
 </body>
 </html>
