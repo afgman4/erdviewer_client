@@ -625,11 +625,13 @@
                 maxBottom = Math.max(maxBottom, bottom);
             }
             
-            const minWidth = erdContainer.clientWidth - 40;
-            const minHeight = erdContainer.clientHeight - 40;
-            
-            erdCanvas.style.width = `${Math.max(minWidth, maxRight + 100)}px`;
-            erdCanvas.style.height = `${Math.max(minHeight, maxBottom + 100)}px`;
+            // Add a buffer to ensure links don't get cut off
+            const buffer = 200; 
+            const newWidth = Math.max(erdContainer.clientWidth, maxRight + buffer);
+            const newHeight = Math.max(erdContainer.clientHeight, maxBottom + buffer);
+
+            erdCanvas.style.width = `${newWidth}px`;
+            erdCanvas.style.height = `${newHeight}px`;
             
             linkCanvas.style.width = erdCanvas.style.width;
             linkCanvas.style.height = erdCanvas.style.height;
@@ -846,10 +848,12 @@
         });
         
         erdContainer.addEventListener('mousedown', (e) => {
-            // 테이블 내부를 클릭하면 패닝이 발생하지 않도록 합니다.
+            // Check if the click is on a table header or anywhere else
             if (e.target.closest('.table-box')) {
+                // If it's a table, dragging logic is handled by tableHeader's mousedown listener
                 return;
             } else {
+                // Otherwise, enable panning
                 isPanning = true;
                 startPanX = e.clientX;
                 startPanY = e.clientY;
@@ -863,12 +867,17 @@
                 const newX = e.clientX - initialMouseX;
                 const newY = e.clientY - initialMouseY;
                 
+                // Update table position
                 activeElement.style.left = `${newX}px`;
                 activeElement.style.top = `${newY}px`;
                 
                 tableData.position.x = newX;
                 tableData.position.y = newY;
                 
+                // Check and adjust canvas size
+                adjustCanvasSize();
+
+                // Re-draw links
                 drawLinks();
             } else if (isPanning) {
                 const dx = e.clientX - startPanX;
