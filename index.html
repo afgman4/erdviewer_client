@@ -36,6 +36,7 @@
             --modal-bg: #fff;
             --modal-border: #ccc;
             --modal-text: #333;
+            --highlight-color: #ffc107;
         }
 
         /* Dark Theme */
@@ -64,6 +65,7 @@
             --modal-bg: #4b5563;
             --modal-border: #6b7280;
             --modal-text: #e5e7eb;
+            --highlight-color: #f1c40f;
         }
 
         /* Darcula Theme */
@@ -92,6 +94,7 @@
             --modal-bg: #3c3f41;
             --modal-border: #555;
             --modal-text: #a9b7c6;
+            --highlight-color: #ff9800;
         }
 
         /* Monokai Theme */
@@ -120,6 +123,7 @@
             --modal-bg: #3c3d36;
             --modal-border: #5d5d5d;
             --modal-text: #f8f8f2;
+            --highlight-color: #e6db74;
         }
 
         /* General styles using variables */
@@ -170,7 +174,7 @@
             color: var(--toolbar-text);
             transition: color 0.3s;
         }
-
+        
         /* Common button styles */
         .toolbar-btn {
             padding: 8px 16px;
@@ -242,10 +246,24 @@
             display: inline-block;
             position: absolute;
             transform-origin: 0 0;
-            transition: box-shadow 0.2s ease-in-out, background-color 0.3s, border-color 0.3s;
+            transition: box-shadow 0.2s ease-in-out, background-color 0.3s, border-color 0.3s, outline 0.3s;
         }
         .table-box:hover {
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        }
+        .table-box.highlight {
+            animation: highlight-pulse 1s ease-in-out infinite alternate;
+        }
+        
+        @keyframes highlight-pulse {
+            from {
+                outline: 2px solid transparent;
+                transform: scale(1.0);
+            }
+            to {
+                outline: 2px solid var(--highlight-color);
+                transform: scale(1.03);
+            }
         }
 
         .table-box h4 {
@@ -328,7 +346,7 @@
 
         @keyframes fadein {
             from { opacity: 0; transform: translate(-50%, -60%); }
-            to   { opacity: 1; transform: translate(-50%, -50%); }
+            to   { opacity: 1; transform: translate(-50%, -50%); }
         }
 
         .modal.fadeout {
@@ -337,7 +355,7 @@
 
         @keyframes fadeout {
             from { opacity: 1; transform: translate(-50%, -50%); }
-            to   { opacity: 0; transform: translate(-50%, -60%); }
+            to   { opacity: 0; transform: translate(-50%, -60%); }
         }
     </style>
 </head>
@@ -362,7 +380,10 @@
 
     <div id="main-content">
         <div id="toolbar" class="flex items-center justify-end gap-2 p-3 border-b">
-            <span id="toolbar-left" class="mr-auto text-sm">Powered by Sherman</span>
+            <div class="flex items-center space-x-2 mr-auto">
+                <input type="text" id="search-input" placeholder="테이블/컬럼 검색" class="p-2 border border-gray-300 rounded-lg text-gray-800" />
+                <button id="search-btn" class="toolbar-btn neutral-btn">검색</button>
+            </div>
             
             <button id="zoom-in" class="toolbar-btn neutral-btn">+</button>
             <button id="zoom-out" class="toolbar-btn neutral-btn">-</button>
@@ -389,6 +410,8 @@
         const zoomOutBtn = document.getElementById('zoom-out');
         const zoomResetBtn = document.getElementById('zoom-reset');
         const saveCoordsBtn = document.getElementById('save-coords-btn');
+        const searchInput = document.getElementById('search-input');
+        const searchBtn = document.getElementById('search-btn');
 
         let allTablesData = {};
         let currentScale = 1;
@@ -731,6 +754,67 @@
             showModal("테이블 위치가 성공적으로 저장되었습니다!");
         }
 
+        function searchTable() {
+            const searchTerm = searchInput.value.trim().toLowerCase();
+            if (!searchTerm) {
+                showModal("검색어를 입력해주세요.");
+                return;
+            }
+
+            let foundTable = null;
+            // Iterate through all tables to find a match
+            for (const tableName in allTablesData) {
+                // Check table name
+                if (tableName.toLowerCase() === searchTerm) {
+                    foundTable = allTablesData[tableName];
+                    break;
+                }
+            }
+
+            if (foundTable) {
+                centerTableOnScreen(foundTable);
+                highlightTable(foundTable.name);
+            } else {
+                showModal("검색 결과가 없습니다.");
+            }
+        }
+
+        function centerTableOnScreen(tableData) {
+            const tableElement = document.getElementById(`table-${tableData.name}`);
+            if (!tableElement) return;
+
+            // Get viewport dimensions
+            const viewportWidth = erdContainer.clientWidth;
+            const viewportHeight = erdContainer.clientHeight;
+
+            // Get table dimensions
+            const tableWidth = tableElement.offsetWidth;
+            const tableHeight = tableElement.offsetHeight;
+
+            // Calculate new pan coordinates to center the table
+            const newPanX = -tableData.position.x * currentScale + (viewportWidth / 2) - (tableWidth * currentScale / 2);
+            const newPanY = -tableData.position.y * currentScale + (viewportHeight / 2) - (tableHeight * currentScale / 2);
+
+            // Update current pan and apply transform
+            currentPanX = newPanX;
+            currentPanY = newPanY;
+            updateZoom();
+        }
+
+        function highlightTable(tableName) {
+            const tableElement = document.getElementById(`table-${tableName}`);
+            if (tableElement) {
+                // Remove existing highlights
+                document.querySelectorAll('.table-box.highlight').forEach(el => {
+                    el.classList.remove('highlight');
+                    // Force reflow to restart animation if needed
+                    void el.offsetWidth;
+                });
+                // Add highlight to the found table
+                tableElement.classList.add('highlight');
+            }
+        }
+
         // Custom modal UI instead of alert()
         function showModal(message) {
             const modal = document.createElement('div');
@@ -750,6 +834,12 @@
         zoomOutBtn.addEventListener('click', zoomOut);
         zoomResetBtn.addEventListener('click', zoomReset);
         saveCoordsBtn.addEventListener('click', saveTablePositions);
+        searchBtn.addEventListener('click', searchTable);
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                searchTable();
+            }
+        });
         
         erdContainer.addEventListener('mousedown', (e) => {
             // 테이블 내부를 클릭하면 패닝이 발생하지 않도록 합니다.
