@@ -120,18 +120,19 @@
             display: inline-block;
             box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
             position: absolute;
-            cursor: move;
             transform-origin: 0 0;
         }
-        
+
+        /* 변경: 테이블 제목(h4)에만 이동 커서 및 드래그 기능 적용 */
         .table-box h4 {
             margin: 0 0 10px 0;
             padding-bottom: 5px;
             border-bottom: 2px solid #ccc;
-            color: #3b82f6; /* Changed to a Tailwind-like blue */
+            color: #3b82f6;
             font-weight: bold;
+            cursor: grab; /* 제목 부분에만 grab 커서 적용 */
         }
-
+        
         .table-box table {
             width: 100%;
             border-collapse: collapse;
@@ -146,17 +147,17 @@
         }
 
         .table-box th {
-            background-color: #93c5fd; /* Changed to a Tailwind-like blue */
+            background-color: #93c5fd;
         }
 
         .pk-row td:first-child {
             font-weight: bold;
-            color: #ef4444; /* Changed to a Tailwind-like red */
+            color: #ef4444;
         }
 
         .fk-row td:first-child {
             font-weight: bold;
-            color: #3b82f6; /* Changed to a Tailwind-like blue */
+            color: #3b82f6;
         }
 
         .link-line {
@@ -189,7 +190,7 @@
 
         @keyframes fadein {
             from { opacity: 0; transform: translate(-50%, -60%); }
-            to   { opacity: 1; transform: translate(-50%, -50%); }
+            to   { opacity: 1; transform: translate(-50%, -50%); }
         }
 
         .modal.fadeout {
@@ -198,7 +199,7 @@
 
         @keyframes fadeout {
             from { opacity: 1; transform: translate(-50%, -50%); }
-            to   { opacity: 0; transform: translate(-50%, -60%); }
+            to   { opacity: 0; transform: translate(-50%, -60%); }
         }
     </style>
 </head>
@@ -380,12 +381,16 @@
                 
                 tableBox.appendChild(table);
 
-                tableBox.addEventListener('mousedown', (e) => {
-                    e.stopPropagation();
+                // `tableBox`의 `mousedown` 이벤트 리스너를 제거하고 `tableHeader`에만 추가
+                tableHeader.addEventListener('mousedown', (e) => {
+                    // 이벤트 전파를 막아 `erdContainer`의 패닝 이벤트가 발생하지 않도록 합니다.
+                    e.stopPropagation(); 
+                    
                     isDragging = true;
-                    activeElement = tableBox;
+                    activeElement = tableBox; // 드래그할 대상은 부모인 tableBox
                     initialMouseX = e.clientX - tableData.position.x;
                     initialMouseY = e.clientY - tableData.position.y;
+                    panContainer.style.cursor = 'default'; // 패닝 커서 해제
                     activeElement.style.cursor = 'grabbing';
                 });
                 
@@ -566,15 +571,9 @@
         saveCoordsBtn.addEventListener('click', saveTablePositions);
         
         erdContainer.addEventListener('mousedown', (e) => {
-            // Check if the click is on a table or the background
+            // 테이블 내부를 클릭하면 패닝이 발생하지 않도록 합니다.
             if (e.target.closest('.table-box')) {
-                isDragging = true;
-                activeElement = e.target.closest('.table-box');
-                const tableData = allTablesData[activeElement.id.replace('table-', '')];
-                initialMouseX = e.clientX - tableData.position.x;
-                initialMouseY = e.clientY - tableData.position.y;
-                activeElement.style.cursor = 'grabbing';
-                e.stopPropagation(); // Prevent canvas panning
+                return;
             } else {
                 isPanning = true;
                 startPanX = e.clientX;
@@ -617,6 +616,17 @@
                 currentPanY += e.clientY - startPanY;
                 panContainer.style.cursor = 'grab';
             }
+        });
+        
+        // This listener ensures that if the mouse leaves the document while dragging, the dragging stops.
+        document.addEventListener('mouseleave', () => {
+            isDragging = false;
+            isPanning = false;
+            if (activeElement) {
+                activeElement.style.cursor = 'move';
+                activeElement = null;
+            }
+            panContainer.style.cursor = 'grab';
         });
 
         loadSchemas();
