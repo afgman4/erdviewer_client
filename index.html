@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ERD Viewer</title>
-
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Inter', sans-serif;
             margin: 0;
             padding: 0;
             display: flex;
@@ -23,6 +24,7 @@
             overflow-y: auto;
             display: flex;
             flex-direction: column;
+            gap: 16px;
         }
 
         #main-content {
@@ -48,22 +50,50 @@
             color: #666;
         }
 
-        #toolbar button {
-            padding: 5px 10px;
+        /* 공통 버튼 스타일 */
+        .toolbar-btn {
+            padding: 8px 16px;
             cursor: pointer;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            background-color: #e9e9e9;
+            border: none;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+        
+        /* 중립적 버튼 (확대/축소) */
+        .neutral-btn {
+            background-color: #e5e7eb; /* gray-200 */
+            color: #4b5563; /* gray-700 */
+        }
+        .neutral-btn:hover {
+            background-color: #d1d5db; /* gray-300 */
+        }
+
+        /* 강조 버튼 (저장) */
+        .primary-btn {
+            background-color: #3b82f6; /* blue-500 */
+            color: #fff;
+        }
+        .primary-btn:hover {
+            background-color: #2563eb; /* blue-600 */
         }
 
         #erd-container {
             flex-grow: 1;
             padding: 20px;
-            overflow: auto;
             position: relative;
             background-color: #fff;
+            /* Changed from 'hidden' to 'auto' to enable scrollbars */
+            overflow: auto; 
         }
 
+        /* erd-canvas와 link-canvas를 담는 새로운 컨테이너 */
+        #pan-container {
+            position: relative; /* Changed from absolute */
+            transform-origin: 0 0;
+            cursor: grab;
+        }
+        
         #link-canvas {
             position: absolute;
             top: 0;
@@ -75,10 +105,10 @@
         }
 
         #erd-canvas {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            cursor: grab;
+            position: relative; /* Changed from absolute */
+            min-width: 100%; /* Ensure canvas takes at least full width */
+            min-height: 100%; /* Ensure canvas takes at least full height */
+            cursor: default;
             z-index: 2;
         }
 
@@ -91,14 +121,14 @@
             box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
             position: absolute;
             cursor: move;
-            transform-origin: 0 0; /* 각 테이블의 좌상단을 기준으로 확대/축소 */
+            transform-origin: 0 0;
         }
-
+        
         .table-box h4 {
             margin: 0 0 10px 0;
             padding-bottom: 5px;
             border-bottom: 2px solid #ccc;
-            color: blue;
+            color: #3b82f6; /* Changed to a Tailwind-like blue */
             font-weight: bold;
         }
 
@@ -116,17 +146,17 @@
         }
 
         .table-box th {
-            background-color: #819ef0;
+            background-color: #93c5fd; /* Changed to a Tailwind-like blue */
         }
 
         .pk-row td:first-child {
             font-weight: bold;
-            color: red;
+            color: #ef4444; /* Changed to a Tailwind-like red */
         }
 
         .fk-row td:first-child {
             font-weight: bold;
-            color: blue;
+            color: #3b82f6; /* Changed to a Tailwind-like blue */
         }
 
         .link-line {
@@ -137,39 +167,77 @@
         .link-head {
             fill: #888;
         }
+
+        /* Custom Modal Styling */
+        .modal {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 24px;
+            border: 1px solid #ccc;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 2000;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 500;
+            color: #333;
+            animation: fadein 0.3s ease-out;
+        }
+
+        @keyframes fadein {
+            from { opacity: 0; transform: translate(-50%, -60%); }
+            to   { opacity: 1; transform: translate(-50%, -50%); }
+        }
+
+        .modal.fadeout {
+            animation: fadeout 0.3s ease-in forwards;
+        }
+
+        @keyframes fadeout {
+            from { opacity: 1; transform: translate(-50%, -50%); }
+            to   { opacity: 0; transform: translate(-50%, -60%); }
+        }
     </style>
 </head>
 <body>
 
     <div id="sidebar">
         <h3>Databases</h3>
-        <select id="schema-select" onchange="loadTables(this.value)">
+        <select id="schema-select" class="w-full p-2 border border-gray-300 rounded-lg" onchange="loadTables(this.value)">
             <option value="">Select a database</option>
         </select>
         <h3>Tables</h3>
-        <p>
+        <p class="text-sm text-gray-500">
             테이블을 클릭하면 이동할 수 있습니다.
         </p>
     </div>
 
     <div id="main-content">
-        <div id="toolbar">
-            <span id="toolbar-left">Powered by Sherman</span>
+        <div id="toolbar" class="flex items-center justify-end gap-2 p-3 bg-white border-b border-gray-200">
+            <span id="toolbar-left" class="mr-auto text-sm text-gray-600">Powered by Sherman</span>
             
-            <button id="zoom-in">Zoom In (+)</button>
-            <button id="zoom-out">Zoom Out (-)</button>
-            <button id="zoom-reset">Reset Zoom</button>
-            <button id="save-coords-btn">좌표 저장</button>
+            <!-- 버튼에 새로운 클래스 적용 -->
+            <button id="zoom-in" class="toolbar-btn neutral-btn">+</button>
+            <button id="zoom-out" class="toolbar-btn neutral-btn">-</button>
+            <button id="zoom-reset" class="toolbar-btn neutral-btn">Reset</button>
+            <button id="save-coords-btn" class="toolbar-btn primary-btn">좌표 저장</button>
         </div>
-        <div id="erd-container">
-            <svg id="link-canvas"></svg>
-            <div id="erd-canvas"></div>
+        <div id="erd-container" class="relative p-5 bg-gray-50 overflow-auto">
+            <div id="pan-container" class="absolute top-0 left-0 w-full h-full transform-origin-top-left cursor-grab">
+                <svg id="link-canvas" class="absolute top-0 left-0 w-full h-full pointer-events-none z-10"></svg>
+                <div id="erd-canvas" class="relative z-20"></div>
+            </div>
         </div>
     </div>
 
     <script>
         const API_BASE_URL = 'http://localhost:3000/api';
         const schemaSelect = document.getElementById('schema-select');
+        const erdContainer = document.getElementById('erd-container');
+        const panContainer = document.getElementById('pan-container');
         const erdCanvas = document.getElementById('erd-canvas');
         const linkCanvas = document.getElementById('link-canvas');
         const zoomInBtn = document.getElementById('zoom-in');
@@ -180,14 +248,18 @@
         let allTablesData = {};
         let currentScale = 1;
         const zoomStep = 0.2;
+
         let isDragging = false;
+        let isPanning = false;
         let activeElement = null;
-        let initialX, initialY;
-        let canvasOffsetX, canvasOffsetY;
+        let initialMouseX, initialMouseY;
+        let startPanX, startPanY;
+        let currentPanX = 0, currentPanY = 0;
 
         async function loadSchemas() {
             try {
                 const response = await fetch(`${API_BASE_URL}/schemas`);
+                if (!response.ok) throw new Error('Network response was not ok.');
                 const schemas = await response.json();
                 schemas.forEach(schema => {
                     const option = document.createElement('option');
@@ -197,6 +269,7 @@
                 });
             } catch (error) {
                 console.error('Failed to load schemas:', error);
+                showModal("스키마를 불러오는 데 실패했습니다.");
             }
         }
 
@@ -210,11 +283,16 @@
 
             try {
                 const response = await fetch(`${API_BASE_URL}/tables/${schema}`);
+                if (!response.ok) throw new Error('Network response was not ok.');
                 const tables = await response.json();
 
+                // Fetch columns for all tables concurrently
                 const tablePromises = tables.map(table =>
                     fetch(`${API_BASE_URL}/columns/${schema}/${table}`)
-                        .then(res => res.json())
+                        .then(res => {
+                            if (!res.ok) throw new Error(`Failed to load columns for table: ${table}`);
+                            return res.json();
+                        })
                         .then(columns => {
                             allTablesData[table] = {
                                 name: table,
@@ -230,6 +308,7 @@
 
             } catch (error) {
                 console.error('Failed to load tables:', error);
+                showModal("테이블을 불러오는 데 실패했습니다.");
             }
         }
 
@@ -258,14 +337,14 @@
                 } else {
                     const row = Math.floor(index / tablesPerRow);
                     const col = index % tablesPerRow;
-                    xPos = col * horizontalSpacing;
-                    yPos = row * verticalSpacing;
+                    xPos = col * horizontalSpacing + 50;
+                    yPos = row * verticalSpacing + 50;
                 }
 
                 tableData.position = { x: xPos, y: yPos };
                 tableBox.style.left = `${xPos}px`;
                 tableBox.style.top = `${yPos}px`;
-                tableBox.style.transform = `scale(${currentScale})`;
+                tableBox.style.transform = `scale(1)`;
 
                 const tableHeader = document.createElement('h4');
                 tableHeader.textContent = tableName;
@@ -287,14 +366,9 @@
                     let sPK = col.is_primary_key === 'true' ? '(pk)' : '';
                     let sFK = col.is_foreign_key === 'true' ? '(fk)' : ''; 
                     
-                    if (sPK) {
-                        col.name += ` ${sPK}`;
-                    }
-                    if (sFK) {
-                        col.name += ` ${sFK}`;
-                    }
+                    const columnName = `${col.name} ${sPK} ${sFK}`.trim();
 
-                    colRow.innerHTML = `<td>${col.name}</td><td>${col.comment || ''}</td><td>${dataType}</td><td>${col.is_nullable}</td>`;
+                    colRow.innerHTML = `<td>${columnName}</td><td>${col.comment || ''}</td><td>${dataType}</td><td>${col.is_nullable}</td>`;
                     if (col.is_primary_key === 'true') {
                         colRow.classList.add('pk-row');
                     } else if (col.is_foreign_key === 'true') {
@@ -306,15 +380,24 @@
                 
                 tableBox.appendChild(table);
 
-                tableBox.addEventListener('mousedown', dragStart);
+                tableBox.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    isDragging = true;
+                    activeElement = tableBox;
+                    initialMouseX = e.clientX - tableData.position.x;
+                    initialMouseY = e.clientY - tableData.position.y;
+                    activeElement.style.cursor = 'grabbing';
+                });
+                
                 erdCanvas.appendChild(tableBox);
 
-                // 최초 크기 저장 (스케일 적용 전)
-                tableData.dimensions.width = 
-                tableBox.offsetWidth;
-                tableData.dimensions.height = tableBox.offsetHeight;
+                // Wait for the element to be rendered to get correct dimensions
+                setTimeout(() => {
+                    tableData.dimensions.width = tableBox.offsetWidth;
+                    tableData.dimensions.height = tableBox.offsetHeight;
+                    drawLinks(); // Redraw links after all tables are positioned
+                }, 0);
             });
-
             adjustCanvasSize();
             drawLinks();
         }
@@ -325,14 +408,15 @@
 
             for (const tableName in allTablesData) {
                 const tableData = allTablesData[tableName];
-                const right = tableData.position.x + (tableData.dimensions.width * currentScale);
-                const bottom = tableData.position.y + (tableData.dimensions.height * currentScale);
+                const right = tableData.position.x + tableData.dimensions.width;
+                const bottom = tableData.position.y + tableData.dimensions.height;
                 maxRight = Math.max(maxRight, right);
                 maxBottom = Math.max(maxBottom, bottom);
             }
             
-            const minWidth = window.innerWidth - 250 - 40;
-            const minHeight = window.innerHeight - 40;
+            // Set canvas size based on content, with a minimum size of the container
+            const minWidth = erdContainer.clientWidth - 40;
+            const minHeight = erdContainer.clientHeight - 40;
             
             erdCanvas.style.width = `${Math.max(minWidth, maxRight + 100)}px`;
             erdCanvas.style.height = `${Math.max(minHeight, maxBottom + 100)}px`;
@@ -386,15 +470,14 @@
             });
         }
 
-        // 두 테이블 간의 최적 연결 지점 계산 (간단화)
         function getConnectorPoint(table1, table2) {
-            const x1 = table1.position.x + (table1.dimensions.width * currentScale) / 2;
-            const y1 = table1.position.y + (table1.dimensions.height * currentScale) / 2;
-            const w1 = table1.dimensions.width * currentScale;
-            const h1 = table1.dimensions.height * currentScale;
+            const x1 = table1.position.x + table1.dimensions.width / 2;
+            const y1 = table1.position.y + table1.dimensions.height / 2;
+            const w1 = table1.dimensions.width;
+            const h1 = table1.dimensions.height;
 
-            const x2 = table2.position.x + (table2.dimensions.width * currentScale) / 2;
-            const y2 = table2.position.y + (table2.dimensions.height * currentScale) / 2;
+            const x2 = table2.position.x + table2.dimensions.width / 2;
+            const y2 = table2.position.y + table2.dimensions.height / 2;
             
             const dx = x2 - x1;
             const dy = y2 - y1;
@@ -403,28 +486,24 @@
             if (angle < 0) angle += 2 * Math.PI;
             
             let point = {};
-            const side = Math.tan(angle);
+            const side = Math.abs(Math.tan(angle));
             
-            if (Math.abs(side * w1) < h1) {
-                point.x = x1 + w1 / 2 * Math.cos(angle);
-                point.y = y1 + w1 / 2 * Math.sin(angle);
+            // Determine intersection point on the rectangle boundary
+            if (side * w1 < h1) {
+                // Intersects a vertical side
+                point.x = x1 + Math.sign(dx) * w1 / 2;
+                point.y = y1 + Math.sign(dx) * w1 / 2 * side;
             } else {
-                point.x = x1 + h1 / 2 / side * Math.cos(angle);
-                point.y = y1 + h1 / 2 / side * Math.sin(angle);
+                // Intersects a horizontal side
+                point.x = x1 + Math.sign(dy) * h1 / 2 / side;
+                point.y = y1 + Math.sign(dy) * h1 / 2;
             }
 
             return point;
         }
 
         function updateZoom() {
-            const tables = Object.keys(allTablesData);
-            tables.forEach(tableName => {
-                const tableBox = document.getElementById(`table-${tableName}`);
-                if (tableBox) {
-                    tableBox.style.transform = `scale(${currentScale})`;
-                }
-            });
-            adjustCanvasSize();
+            panContainer.style.transform = `translate(${currentPanX}px, ${currentPanY}px) scale(${currentScale})`;
             drawLinks();
         }
 
@@ -442,53 +521,15 @@
 
         function zoomReset() {
             currentScale = 1;
+            currentPanX = 0;
+            currentPanY = 0;
             updateZoom();
-        }
-
-        function dragStart(e) {
-            activeElement = e.target.closest('.table-box');
-            if (!activeElement) return;
-
-            e.preventDefault();
-            isDragging = true;
-            
-            const tableData = allTablesData[activeElement.id.replace('table-', '')];
-            initialX = e.clientX - tableData.position.x;
-            initialY = e.clientY - tableData.position.y;
-            
-            activeElement.style.cursor = 'grabbing';
-        }
-
-        function drag(e) {
-            if (!isDragging || !activeElement) return;
-            
-            const tableData = allTablesData[activeElement.id.replace('table-', '')];
-            
-            const newX = e.clientX - initialX;
-            const newY = e.clientY - initialY;
-            
-            activeElement.style.left = `${newX}px`;
-            activeElement.style.top = `${newY}px`;
-
-            tableData.position.x = newX;
-            tableData.position.y = newY;
-            
-            adjustCanvasSize();
-            drawLinks();
-        }
-
-        function dragEnd(e) {
-            isDragging = false;
-            if (activeElement) {
-                activeElement.style.cursor = 'move';
-                activeElement = null;
-            }
         }
 
         function saveTablePositions() {
             const currentSchema = schemaSelect.value;
             if (!currentSchema) {
-                alert("저장할 스키마를 선택해주세요.");
+                showModal("저장할 스키마를 선택해주세요.");
                 return;
             }
             
@@ -501,17 +542,82 @@
             }
             
             localStorage.setItem(`erd-coords-${currentSchema}`, JSON.stringify(positionsToSave));
-            alert("테이블 위치가 성공적으로 저장되었습니다!");
+            showModal("테이블 위치가 성공적으로 저장되었습니다!");
         }
 
+        // Custom modal UI instead of alert()
+        function showModal(message) {
+            const modal = document.createElement('div');
+            modal.classList.add('modal');
+            modal.textContent = message;
+
+            document.body.appendChild(modal);
+            
+            setTimeout(() => {
+                modal.classList.add('fadeout');
+                modal.addEventListener('animationend', () => modal.remove());
+            }, 2000);
+        }
+
+        // Event listeners
         zoomInBtn.addEventListener('click', zoomIn);
         zoomOutBtn.addEventListener('click', zoomOut);
         zoomResetBtn.addEventListener('click', zoomReset);
         saveCoordsBtn.addEventListener('click', saveTablePositions);
+        
+        erdContainer.addEventListener('mousedown', (e) => {
+            // Check if the click is on a table or the background
+            if (e.target.closest('.table-box')) {
+                isDragging = true;
+                activeElement = e.target.closest('.table-box');
+                const tableData = allTablesData[activeElement.id.replace('table-', '')];
+                initialMouseX = e.clientX - tableData.position.x;
+                initialMouseY = e.clientY - tableData.position.y;
+                activeElement.style.cursor = 'grabbing';
+                e.stopPropagation(); // Prevent canvas panning
+            } else {
+                isPanning = true;
+                startPanX = e.clientX;
+                startPanY = e.clientY;
+                panContainer.style.cursor = 'grabbing';
+            }
+        });
 
-        document.addEventListener('mousedown', dragStart);
-        document.addEventListener('mousemove', drag);
-        document.addEventListener('mouseup', dragEnd);
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging && activeElement) {
+                const tableData = allTablesData[activeElement.id.replace('table-', '')];
+                const newX = e.clientX - initialMouseX;
+                const newY = e.clientY - initialMouseY;
+                
+                activeElement.style.left = `${newX}px`;
+                activeElement.style.top = `${newY}px`;
+                
+                tableData.position.x = newX;
+                tableData.position.y = newY;
+                
+                drawLinks();
+            } else if (isPanning) {
+                const dx = e.clientX - startPanX;
+                const dy = e.clientY - startPanY;
+                panContainer.style.transform = `translate(${currentPanX + dx}px, ${currentPanY + dy}px) scale(${currentScale})`;
+            }
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (isDragging) {
+                isDragging = false;
+                if (activeElement) {
+                    activeElement.style.cursor = 'move';
+                    activeElement = null;
+                }
+            } else if (isPanning) {
+                isPanning = false;
+                // Update current pan offset
+                currentPanX += e.clientX - startPanX;
+                currentPanY += e.clientY - startPanY;
+                panContainer.style.cursor = 'grab';
+            }
+        });
 
         loadSchemas();
     </script>
