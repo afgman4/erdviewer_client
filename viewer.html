@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>데이터베이스 ERD 뷰어</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #erd-container {
+      flex: 1;
+      width: 100%;
+      height: calc(100vh - 12rem); /* 헤더와 버튼 영역을 고려하여 높이 조정 */
+      overflow: auto; /* 스크롤바를 위한 설정 */
+      border: 1px solid #d1d5db;
+      border-radius: 0.5rem;
+      background-color: white;
+      position: relative;
+    }
+    #erd-canvas {
+      width: 100%;
+      /* height는 JavaScript에서 동적으로 설정 */
+    }
+  </style>
+</head>
+<body class="bg-gray-100 flex flex-col">
+  <div class="bg-white p-8 w-full flex flex-col rounded-none shadow-none">
+    <h1 class="text-3xl font-extrabold mb-8 text-center text-gray-800">
+      데이터베이스 ERD 뷰어
+    </h1>
+
+    <div class="flex items-center space-x-4 mb-6">
+      <div class="flex-1">
+        <label for="schema-select" class="block text-sm font-medium text-gray-700">스키마 선택</label>
+        <select id="schema-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm">
+          <option value="">스키마를 선택하세요</option>
+        </select>
+      </div>
+      <button id="load-erd-btn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+        ERD 로드
+      </button>
+    </div>
+
+    <div id="erd-container" class="bg-gray-50 p-6 rounded-lg shadow-lg">
+      <div id="loading-message" class="text-center text-gray-500 hidden">
+        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        테이블 정보를 불러오는 중...
+      </div>
+      <svg id="erd-canvas" width="100%"></svg>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE_URL = 'http://localhost:3000/api';
+    const canvas = document.getElementById('erd-canvas');
+    const erdContainer = document.getElementById('erd-container');
+    const schemaSelect = document.getElementById('schema-select');
+    const loadErdBtn = document.getElementById('load-erd-btn');
+    const loadingMessage = document.getElementById('loading-message');
+
+    let scale = 1.0;
+    const minScale = 0.2;
+    const maxScale = 2.0;
+    const zoomSpeed = 0.05;
+    let dbSchema = [];
+    let isDragging = false;
+    let startX, startY, translateX = 0, translateY = 0;
+
+    function showCustomAlert(message) {
+      const alertBox = document.createElement('div');
+      alertBox.textContent = message;
+      alertBox.style.cssText = 'position: fixed; top: 20px; right: 20px; padding: 10px 20px; background-color: #fca5a5; color: #7f1d1d; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000;';
+      document.body.appendChild(alertBox);
+      setTimeout(() => alertBox.remove(), 5000);
+    }
+
+    async function fetchSchemas() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/schemas`);
+        const schemas = await response.json();
+        schemaSelect.innerHTML = '<option value="">스키마를 선택하세요</option>';
+        schemas.forEach(schema => {
+          const option = document.createElement('option');
+          option.value = schema;
+          option.textContent = schema;
+          schemaSelect.appendChild(option);
+        });
+      } catch (error) {
+        console.error('Failed to fetch schemas:', error);
+        showCustomAlert('스키마 목록을 불러오는 데 실패했습니다. 서버가 실행 중인지 확인하세요.');
+      }
+    }
+
+    async function fetchERDData(schema) {
+      if (!schema) {
+        showCustomAlert('스키마를 선택해주세요.');
+        return;
+      }
+
+      loadingMessage.classList.remove('hidden');
+      canvas.innerHTML = '';
+      dbSchema = [];
+      translateX = 0;
+      translateY = 0;
+
+      try {
+        const tablesResponse = await fetch(`${API_BASE_URL}/tables/${schema}`);
+        const tables = await tablesResponse.json();
+
+        const fetchPromises = tables.map(async (tableName) => {
+          const columnsResponse = await fetch(`${API_BASE_URL}/columns/${schema}/${tableName}`);
+          const columns = await columnsResponse.json();
+
+          return {
+            tableName: tableName,
+            displayName: tableName,
+            columns: columns.map(col => ({
+              columnName: col.name,
+              comment: col.comment || '없음',
+              size: col.size || null,
+              type: col.type,
+              is_nullable: col.is_nullable === "YES",
+              isPK: col.is_primary_key === "true",
+              isFK: col.is_foreign_key === "true",
+              referenced_table: col.referenced_table,
+              referenced_column: col.referenced_column
+            })),
+            position: { x: 0, y: 0 }
+          };
+        });
+
+        dbSchema = await Promise.all(fetchPromises);
+        loadingMessage.classList.add('hidden');
+        drawERD();
+      } catch (error) {
+        console.error('Failed to fetch ERD data:', error);
+        loadingMessage.classList.add('hidden');
+        showCustomAlert('ERD 데이터를 불러오는 데 실패했습니다. 서버 연결을 확인하세요.');
+      }
+    }
+
+    function measureTextWidth(text, className) {
+      const tempSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      tempSvg.style.visibility = 'hidden';
+      tempSvg.style.position = 'absolute';
+      document.body.appendChild(tempSvg);
+
+      const tempText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      tempText.textContent = text;
+      tempText.setAttribute('class', className);
+      tempSvg.appendChild(tempText);
+
+      const width = tempText.getBBox().width;
+      document.body.removeChild(tempSvg);
+      return width;
+    }
+
+    function drawERD() {
+      canvas.innerHTML = '';
+      const mainGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      mainGroup.setAttribute('id', 'main-erd-group');
+      mainGroup.setAttribute('transform', `translate(${translateX}, ${translateY}) scale(${scale})`);
+      canvas.appendChild(mainGroup);
+
+      const tablePaddings = { horizontal: 20, vertical: 10 };
+      const colPaddings = { horizontal: 10 };
+      let maxColNameWidth = measureTextWidth('컬럼명', 'text-xs fill-gray-800 font-bold');
+      let maxCommentWidth = measureTextWidth('코멘트', 'text-xs fill-gray-600');
+      let maxTypeWidth = measureTextWidth('데이터 타입', 'text-xs fill-gray-600');
+      let maxNullWidth = measureTextWidth('Null 허용', 'text-xs font-bold');
+      let maxTableNameWidth = measureTextWidth('테이블명', 'font-bold text-sm fill-white');
+      
+      dbSchema.forEach(table => {
+        const tableNameWidth = measureTextWidth(table.displayName, 'font-bold text-sm fill-white');
+        maxTableNameWidth = Math.max(maxTableNameWidth, tableNameWidth);
+
+        table.columns.forEach(column => {
+          const colNameWidth = measureTextWidth(column.columnName, 'text-xs fill-gray-800 font-bold');
+          const commentWidth = measureTextWidth(column.comment, 'text-xs fill-gray-600');
+          const typeText = `${column.type}(${column.size || ''})`;
+          const typeWidth = measureTextWidth(typeText, 'text-xs fill-gray-600');
+          const nullWidth = measureTextWidth(column.is_nullable ? 'Null 허용' : 'Not Null', 'text-xs font-bold');
+
+          maxColNameWidth = Math.max(maxColNameWidth, colNameWidth);
+          maxCommentWidth = Math.max(maxCommentWidth, commentWidth);
+          maxTypeWidth = Math.max(maxTypeWidth, typeWidth);
+          maxNullWidth = Math.max(maxNullWidth, nullWidth);
+        });
+      });
+
+      const colNameWidth = maxColNameWidth + colPaddings.horizontal * 2;
+      const commentWidth = maxCommentWidth + colPaddings.horizontal * 2;
+      const typeWidth = maxTypeWidth + colPaddings.horizontal * 2;
+      const nullWidth = maxNullWidth + colPaddings.horizontal * 2;
+      var totalWidth = Math.max(maxTableNameWidth + tablePaddings.horizontal * 2, colNameWidth + commentWidth + typeWidth + nullWidth);
+
+      const xMargin = 50;
+      const yMargin = 30;
+      const columns = 5;
+      const tablePositions = {};
+      
+      const columnY = new Array(columns).fill(yMargin);
+
+      dbSchema.forEach((table) => {
+        const tableHeight = 40 + (table.columns.length > 0 ? table.columns.length * 20 : 20);
+        
+        const minHeight = Math.min(...columnY);
+        const columnIndex = columnY.indexOf(minHeight);
+        
+        table.position.x = xMargin + columnIndex * (totalWidth + xMargin);
+        table.position.y = minHeight;
+
+        columnY[columnIndex] += tableHeight + yMargin;
+
+        tablePositions[table.tableName] = {
+          ...table.position,
+          width: totalWidth,
+          height: tableHeight,
+          columns: {}
+        };
+
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.setAttribute('transform', `translate(${table.position.x}, ${table.position.y})`);
+        
+        const titleRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        titleRect.setAttribute('x', '0');
+        titleRect.setAttribute('y', '0');
+        titleRect.setAttribute('width', totalWidth);
+        titleRect.setAttribute('height', '30');
+        titleRect.setAttribute('rx', '8');
+        titleRect.setAttribute('ry', '8');
+        titleRect.setAttribute('fill', '#60a5fa');
+        titleRect.setAttribute('stroke', '#3b82f6');
+        group.appendChild(titleRect);
+
+        const titleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        titleText.setAttribute('x', totalWidth / 2);
+        titleText.setAttribute('y', '15');
+        titleText.setAttribute('dominant-baseline', 'middle');
+        titleText.setAttribute('text-anchor', 'middle');
+        titleText.setAttribute('class', 'font-bold text-sm fill-white');
+        titleText.textContent = table.displayName;
+        group.appendChild(titleText);
+
+        const columnsRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        columnsRect.setAttribute('x', '0');
+        columnsRect.setAttribute('y', '30');
+        columnsRect.setAttribute('width', totalWidth);
+        columnsRect.setAttribute('height', tableHeight - 30);
+        columnsRect.setAttribute('rx', '8');
+        columnsRect.setAttribute('ry', '8');
+        columnsRect.setAttribute('fill', '#ffffff');
+        columnsRect.setAttribute('stroke', '#d1d5db');
+        group.appendChild(columnsRect);
+
+        const col1LineX = colNameWidth;
+        const col2LineX = colNameWidth + commentWidth;
+        const col3LineX = colNameWidth + commentWidth + typeWidth;
+
+        if (table.columns.length > 0) {
+            const col1Line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            col1Line.setAttribute('x1', col1LineX);
+            col1Line.setAttribute('y1', '30');
+            col1Line.setAttribute('x2', col1LineX);
+            col1Line.setAttribute('y2', tableHeight);
+            col1Line.setAttribute('stroke', '#d1d5db');
+            group.appendChild(col1Line);
+
+            const col2Line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            col2Line.setAttribute('x1', col2LineX);
+            col2Line.setAttribute('y1', '30');
+            col2Line.setAttribute('x2', col2LineX);
+            col2Line.setAttribute('y2', tableHeight);
+            col2Line.setAttribute('stroke', '#d1d5db');
+            group.appendChild(col2Line);
+
+            const col3Line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            col3Line.setAttribute('x1', col3LineX);
+            col3Line.setAttribute('y1', '30');
+            col3Line.setAttribute('x2', col3LineX);
+            col3Line.setAttribute('y2', tableHeight);
+            col3Line.setAttribute('stroke', '#d1d5db');
+            group.appendChild(col3Line);
+        } else {
+            const noColumnsText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            noColumnsText.setAttribute('x', totalWidth / 2);
+            noColumnsText.setAttribute('y', 50);
+            noColumnsText.setAttribute('text-anchor', 'middle');
+            noColumnsText.setAttribute('class', 'text-sm fill-gray-500');
+            noColumnsText.textContent = '컬럼 없음';
+            group.appendChild(noColumnsText);
+        }
+
+        table.columns.forEach((column, colIndex) => {
+          const textY = 45 + colIndex * 20;
+          
+          if (colIndex > 0) {
+            const rowLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            rowLine.setAttribute('x1', '0');
+            rowLine.setAttribute('y1', `${30 + colIndex * 20}`);
+            rowLine.setAttribute('x2', totalWidth);
+            rowLine.setAttribute('y2', `${30 + colIndex * 20}`);
+            rowLine.setAttribute('stroke', '#d1d5db');
+            group.appendChild(rowLine);
+          }
+
+          if (column.isPK || column.isFK) {
+            const strokeRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            strokeRect.setAttribute('x', '0');
+            strokeRect.setAttribute('y', `${30 + colIndex * 20}`);
+            strokeRect.setAttribute('width', totalWidth);
+            strokeRect.setAttribute('height', '20');
+            strokeRect.setAttribute('fill', 'none');
+            strokeRect.setAttribute('stroke', '#3b82f6');
+            strokeRect.setAttribute('stroke-width', '2');
+            group.appendChild(strokeRect);
+          }
+
+          if (column.isPK) {
+            const pkBackground = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            pkBackground.setAttribute('x', '0');
+            pkBackground.setAttribute('y', `${30 + colIndex * 20}`);
+            pkBackground.setAttribute('width', totalWidth);
+            pkBackground.setAttribute('height', '20');
+            pkBackground.setAttribute('fill', '#fef2f2');
+            group.appendChild(pkBackground);
+          }
+
+          const colNameText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          colNameText.setAttribute('x', '10');
+          colNameText.setAttribute('y', textY);
+          colNameText.setAttribute('class', `text-xs font-bold ${column.isPK || column.isFK ? 'fill-blue-600' : 'fill-gray-800'}`);
+          colNameText.textContent = column.columnName;
+          group.appendChild(colNameText);
+
+          const commentText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          commentText.setAttribute('x', colNameWidth + colPaddings.horizontal);
+          commentText.setAttribute('y', textY);
+          commentText.setAttribute('class', 'text-xs fill-gray-600');
+          commentText.textContent = column.comment;
+          group.appendChild(commentText);
+
+          const typeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          typeText.setAttribute('x', colNameWidth + commentWidth + colPaddings.horizontal * 2);
+          typeText.setAttribute('y', textY);
+          typeText.setAttribute('class', 'text-xs fill-gray-600');
+          typeText.textContent = `${column.type}(${column.size || ''})`;
+          group.appendChild(typeText);
+          
+          const nullText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          nullText.setAttribute('x', totalWidth - 10);
+          nullText.setAttribute('y', textY);
+          nullText.setAttribute('text-anchor', 'end');
+          nullText.setAttribute('class', `text-xs font-bold ${column.is_nullable ? 'fill-gray-500' : 'fill-red-500'}`);
+          nullText.textContent = column.is_nullable ? 'Null 허용' : 'Not Null';
+          group.appendChild(nullText);
+
+          tablePositions[table.tableName].columns[column.columnName] = {
+            x: table.position.x,
+            y: table.position.y + textY - 10,
+            width: totalWidth
+          };
+        });
+        mainGroup.appendChild(group);
+      });
+      
+      dbSchema.forEach(table => {
+        table.columns.forEach(column => {
+          if (column.isFK) {
+            const sourceTable = tablePositions[table.tableName];
+            const targetTable = tablePositions[column.referenced_table];
+            
+            if (sourceTable && targetTable) {
+              const sourceColumn = sourceTable.columns[column.columnName];
+              const targetColumn = targetTable.columns[column.referenced_column];
+              
+              if (sourceColumn && targetColumn) {
+                const startX = sourceColumn.x + sourceColumn.width;
+                const startY = sourceColumn.y;
+                const endX = targetColumn.x;
+                const endY = targetColumn.y;
+                
+                const curveStrength = Math.abs(startX - endX) * 0.5;
+                const controlX1 = startX + curveStrength;
+                const controlX2 = endX - curveStrength;
+                
+                const pathData = `M${startX},${startY} C${controlX1},${startY} ${controlX2},${endY} ${endX},${endY}`;
+                
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', pathData);
+                path.setAttribute('fill', 'none');
+                path.setAttribute('stroke', '#4a5568');
+                path.setAttribute('stroke-width', '2');
+                mainGroup.appendChild(path);
+              }
+            }
+          }
+        });
+      });
+
+      const totalHeight = Math.max(...columnY) + yMargin; // 전체 높이 계산
+      totalWidth = (totalWidth + xMargin) * columns;
+      canvas.setAttribute('width', `1000px`); // 실제 콘텐츠 너비로 설정
+      canvas.setAttribute('height', `800px`); // 실제 콘텐츠 높이로 설정
+      console.log(`Canvas height set to: ${totalHeight}px, Container height: ${erdContainer.clientHeight}px`); // 디버깅용
+    }
+
+    function handleWheel(event) {
+      event.preventDefault();
+      const delta = event.deltaY < 0 ? 1 : -1;
+      const newScale = scale + delta * zoomSpeed;
+      scale = Math.min(Math.max(minScale, newScale), maxScale);
+      const mainGroup = document.getElementById('main-erd-group');
+      if (mainGroup) {
+        mainGroup.setAttribute('transform', `translate(${translateX}, ${translateY}) scale(${scale})`);
+      }
+    }
+
+    function handleDragStart(event) {
+      isDragging = true;
+      startX = event.clientX;
+      startY = event.clientY;
+      erdContainer.style.cursor = 'grabbing';
+    }
+
+    function handleDragMove(event) {
+      if (isDragging) {
+        const deltaX = event.clientX - startX;
+        const deltaY = event.clientY - startY;
+        translateX += deltaX;
+        translateY += deltaY;
+        const mainGroup = document.getElementById('main-erd-group');
+        if (mainGroup) {
+          mainGroup.setAttribute('transform', `translate(${translateX}, ${translateY}) scale(${scale})`);
+        }
+        startX = event.clientX;
+        startY = event.clientY;
+      }
+    }
+
+    function handleDragEnd() {
+      isDragging = false;
+      erdContainer.style.cursor = 'grab';
+    }
+
+    window.onload = async function() {
+      await fetchSchemas();
+      erdContainer.addEventListener('wheel', handleWheel);
+      erdContainer.addEventListener('mousedown', handleDragStart);
+      erdContainer.addEventListener('mousemove', handleDragMove);
+      erdContainer.addEventListener('mouseup', handleDragEnd);
+      erdContainer.addEventListener('mouseleave', handleDragEnd);
+      loadErdBtn.addEventListener('click', () => {
+        const selectedSchema = schemaSelect.value;
+        fetchERDData(selectedSchema);
+      });
+    };
+  </script>
+</body>
+</html>

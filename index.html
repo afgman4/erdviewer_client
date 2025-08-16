@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>DB Schema Viewer</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <h1>MySQL Schema Viewer</h1>
+    <div id="schema-list"></div>
+    <div id="table-list"></div>
+    <div id="column-list"></div>
+
+    <script>
+        // 1. 스키마 목록 불러오기
+        fetch('http://localhost:3000/api/schemas')
+            .then(res => res.json())
+            .then(schemas => {
+                d3.select("#schema-list")
+                  .selectAll("button")
+                  .data(schemas)
+                  .enter()
+                  .append("button")
+                  .text(d => d)
+                  .on("click", function(event, d) { 
+                     loadTables(d);  // d가 schema 이름
+                  });
+            });
+
+        // 2. 테이블 목록 불러오기
+        function loadTables(schemaName) {
+            fetch(`http://localhost:3000/api/tables/${schemaName}`)
+                .then(res => res.json())
+                .then(tables => {
+                    d3.select("#table-list").html(""); // 초기화
+                    d3.select("#column-list").html(""); // 초기화
+
+                    d3.select("#table-list")
+                      .selectAll("button")
+                      .data(tables)
+                      .enter()
+                      .append("button")
+                      .text(d => d)
+                      .on("click", function(event, d) { 
+                        loadColumns(schemaName, d);  // d가 table 이름
+                    });
+                });
+        }
+
+        // 3. 컬럼 목록 불러오기
+        function loadColumns(schemaName, tableName) {
+            fetch(`http://localhost:3000/api/columns/${schemaName}/${tableName}`)
+                .then(res => res.json())
+                .then(columns => {
+                    d3.select("#column-list").html("");
+                    const table = d3.select("#column-list")
+                                    .append("table")
+                                    .style("border-collapse", "collapse")
+                                    .style("border", "1px solid black");
+
+                    // 테이블 헤더
+                    table.append("thead").append("tr")
+                        .selectAll("th")
+                        .data(["Column Name", "Type", "Size"])
+                        .enter()
+                        .append("th")
+                        .text(d => d)
+                        .style("border", "1px solid black")
+                        .style("padding", "5px");
+
+                    // 테이블 내용
+                    table.append("tbody")
+                        .selectAll("tr")
+                        .data(columns)
+                        .enter()
+                        .append("tr")
+                        .selectAll("td")
+                        .data(d => [d.name, d.type, d.size])
+                        .enter()
+                        .append("td")
+                        .text(d => d)
+                        .style("border", "1px solid black")
+                        .style("padding", "5px");
+                });
+        }
+    </script>
+</body>
+</html>
