@@ -13,15 +13,16 @@
       overflow: hidden;
     }
     #erd-container {
-      flex: 1;
-      width: 100%;
-      height: calc(100vh - 12rem); /* 헤더와 버튼 영역을 고려하여 높이 조정 */
-      overflow: auto; /* 스크롤바를 위한 설정 */
-      border: 1px solid #d1d5db;
-      border-radius: 0.5rem;
-      background-color: white;
-      position: relative;
+        flex: 1;
+        width: 100%;
+        height: calc(100vh - 12rem); /* 헤더와 버튼 영역을 고려하여 높이 조정 */
+        overflow: auto; /* 스크롤바를 위한 설정 */
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        background-color: white;
+        position: relative;
     }
+
     #erd-canvas {
       width: 100%;
       /* height는 JavaScript에서 동적으로 설정 */
@@ -408,8 +409,8 @@
 
       const totalHeight = Math.max(...columnY) + yMargin; // 전체 높이 계산
       totalWidth = (totalWidth + xMargin) * columns;
-      canvas.setAttribute('width', `1000px`); // 실제 콘텐츠 너비로 설정
-      canvas.setAttribute('height', `800px`); // 실제 콘텐츠 높이로 설정
+      canvas.setAttribute('width', `${totalWidth}px`); // 실제 콘텐츠 너비로 설정
+      canvas.setAttribute('height', `${totalHeight}px`); // 실제 콘텐츠 높이로 설정
       console.log(`Canvas height set to: ${totalHeight}px, Container height: ${erdContainer.clientHeight}px`); // 디버깅용
     }
 
@@ -420,7 +421,7 @@
       scale = Math.min(Math.max(minScale, newScale), maxScale);
       const mainGroup = document.getElementById('main-erd-group');
       if (mainGroup) {
-        mainGroup.setAttribute('transform', `translate(${translateX}, ${translateY}) scale(${scale})`);
+          mainGroup.setAttribute('transform', `translate(${translateX}, ${translateY}) scale(${scale})`);
       }
     }
 
