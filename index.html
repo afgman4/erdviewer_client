@@ -284,6 +284,16 @@
                     
                     const dataType = `${col.type}${col.size ? `(${col.size})` : ''}`;
                     
+                    let sPK = col.is_primary_key === 'true' ? '(pk)' : '';
+                    let sFK = col.is_foreign_key === 'true' ? '(fk)' : ''; 
+                    
+                    if (sPK) {
+                        col.name += ` ${sPK}`;
+                    }
+                    if (sFK) {
+                        col.name += ` ${sFK}`;
+                    }
+
                     colRow.innerHTML = `<td>${col.name}</td><td>${col.comment || ''}</td><td>${dataType}</td><td>${col.is_nullable}</td>`;
                     if (col.is_primary_key === 'true') {
                         colRow.classList.add('pk-row');
@@ -300,7 +310,8 @@
                 erdCanvas.appendChild(tableBox);
 
                 // 최초 크기 저장 (스케일 적용 전)
-                tableData.dimensions.width = tableBox.offsetWidth;
+                tableData.dimensions.width = 
+                tableBox.offsetWidth;
                 tableData.dimensions.height = tableBox.offsetHeight;
             });
 
