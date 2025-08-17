@@ -289,7 +289,7 @@
         .table-box td {
             padding: 8px 15px;
             text-align: left;
-            font-size: 12px;
+            font-size: 14px;
             border-bottom: 1px solid var(--border-table-row);
             transition: border-color 0.3s;
         }
@@ -342,6 +342,14 @@
             font-weight: 500;
             color: var(--modal-text);
             animation: fadein 0.3s ease-out;
+        }
+
+        .field-name {
+            font-size: 1rem;
+        }
+
+        .field-type {
+            font-size: 0.875rem;
         }
 
         @keyframes fadein {
@@ -577,7 +585,7 @@
                     
                     const columnName = `${col.name} ${sPK} ${sFK}`.trim();
 
-                    colRow.innerHTML = `<td>${columnName}</td><td>${col.comment || ''}</td><td>${dataType}</td><td>${col.is_nullable}</td>`;
+                    colRow.innerHTML = `<td class="p-2 flex items-center"><span class="font-semibold field-name truncate flex-grow">${columnName}</span></td><td>${col.comment || ''}</td><td>${dataType}</td><td>${col.is_nullable}</td>`;
                     if (col.is_primary_key === 'true') {
                         colRow.classList.add('pk-row');
                     } else if (col.is_foreign_key === 'true') {
@@ -771,7 +779,7 @@
             // Iterate through all tables to find a match
             for (const tableName in allTablesData) {
                 // Check table name
-                if (tableName.toLowerCase() === searchTerm) {
+                if (tableName.toLowerCase().includes(searchTerm)) {
                     foundTable = allTablesData[tableName];
                     break;
                 }
@@ -793,18 +801,25 @@
             const viewportWidth = erdContainer.clientWidth;
             const viewportHeight = erdContainer.clientHeight;
 
-            // Get table dimensions
-            const tableWidth = tableElement.offsetWidth;
-            const tableHeight = tableElement.offsetHeight;
+            // Use table dimensions from data object, which are calculated after rendering
+            const tableWidth = tableData.dimensions.width;
+            const tableHeight = tableData.dimensions.height;
 
             // Calculate new pan coordinates to center the table
-            const newPanX = -tableData.position.x * currentScale + (viewportWidth / 2) - (tableWidth * currentScale / 2);
-            const newPanY = -tableData.position.y * currentScale + (viewportHeight / 2) - (tableHeight * currentScale / 2);
+            const newPanX = -tableData.position.x + (viewportWidth / 2) - (tableWidth / 2);
+            const newPanY = -tableData.position.y + (viewportHeight / 2) - (tableHeight / 2);
 
-            // Update current pan and apply transform
+            // Update pan container transform and scale
             currentPanX = newPanX;
             currentPanY = newPanY;
+
+            panContainer.style.transition = 'transform 0.5s ease-in-out';
             updateZoom();
+
+            // Remove transition after animation
+            setTimeout(() => {
+                panContainer.style.transition = '';
+            }, 500);
         }
 
         function highlightTable(tableName) {
@@ -911,6 +926,27 @@
                 activeElement = null;
             }
             panContainer.style.cursor = 'grab';
+        });
+
+        // Event listener for clicking a table name in the sidebar
+        document.addEventListener('click', (e) => {
+            if (e.target.matches('#sidebar .table-link')) {
+                const tableName = e.target.getAttribute('data-table-name');
+                const tableData = allTablesData[tableName];
+                if (tableData) {
+                    centerTableOnScreen(tableData);
+                    highlightTable(tableData.name);
+                }
+            }
+        });
+
+        // Event listener for a table name click
+        erdCanvas.addEventListener('click', (e) => {
+            const tableBox = e.target.closest('.table-box');
+            if (tableBox) {
+                const tableName = tableBox.id.replace('table-', '');
+                highlightTable(tableName);
+            }
         });
 
         // Initialize
