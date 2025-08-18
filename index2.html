@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERD Viewer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* CSS Custom Properties for Theming */
+        :root {
+            /* Light Theme (Default) */
+            --bg-body: #f4f4f9;
+            --text-color: #1f2937;
+            --bg-sidebar: #fff;
+            --border-sidebar: #ddd;
+            --bg-toolbar: #fff;
+            --border-toolbar: #ddd;
+            --toolbar-text: #666;
+            --btn-neutral-bg: #e5e7eb;
+            --btn-neutral-text: #4b5563;
+            --btn-neutral-hover-bg: #d1d5db;
+            --bg-erd-container: #fff;
+            --bg-table-box: #f9fafb;
+            --border-table-box: #e5e7eb;
+            --bg-table-header: #3b82f6;
+            --text-table-header: #fff;
+            --border-table-row: #e5e7eb;
+            --bg-table-head: #f3f4f6;
+            --text-table-head: #4b5563;
+            --text-pk: #ef4444;
+            --text-fk: #3b82f6;
+            --link-color: #888;
+            --modal-bg: #fff;
+            --modal-border: #ccc;
+            --modal-text: #333;
+            --highlight-color: #ffc107;
+        }
+
+        /* Dark Theme */
+        body.theme-dark-theme {
+            --bg-body: #1f2937;
+            --text-color: #e5e7eb;
+            --bg-sidebar: #374151;
+            --border-sidebar: #4b5563;
+            --bg-toolbar: #374151;
+            --border-toolbar: #4b5563;
+            --toolbar-text: #9ca3af;
+            --btn-neutral-bg: #4b5563;
+            --btn-neutral-text: #e5e7eb;
+            --btn-neutral-hover-bg: #6b7280;
+            --bg-erd-container: #111827;
+            --bg-table-box: #374151;
+            --border-table-box: #4b5563;
+            --bg-table-header: #2563eb;
+            --text-table-header: #fff;
+            --border-table-row: #4b5563;
+            --bg-table-head: #1f1827;
+            --text-table-head: #9ca3af;
+            --text-pk: #f87171;
+            --text-fk: #60a5fa;
+            --link-color: #9ca3af;
+            --modal-bg: #4b5563;
+            --modal-border: #6b7280;
+            --modal-text: #e5e7eb;
+            --highlight-color: #f1c40f;
+        }
+
+        /* Darcula Theme */
+        body.theme-darcula-theme {
+            --bg-body: #2b2b2b;
+            --text-color: #a9b7c6;
+            --bg-sidebar: #3c3f41;
+            --border-sidebar: #555;
+            --bg-toolbar: #3c3f41;
+            --border-toolbar: #555;
+            --toolbar-text: #a9b7c6;
+            --btn-neutral-bg: #555;
+            --btn-neutral-text: #a9b7c6;
+            --btn-neutral-hover-bg: #666;
+            --bg-erd-container: #212121;
+            --bg-table-box: #3c3f41;
+            --border-table-box: #555;
+            --bg-table-header: #4b6e82;
+            --text-table-header: #fff;
+            --border-table-row: #555;
+            --bg-table-head: #303335;
+            --text-table-head: #9ca3af;
+            --text-pk: #cc7832;
+            --text-fk: #9876aa;
+            --link-color: #a9b7c6;
+            --modal-bg: #3c3f41;
+            --modal-border: #555;
+            --modal-text: #a9b7c6;
+            --highlight-color: #ff9800;
+        }
+
+        /* Monokai Theme */
+        body.theme-monokai-theme {
+            --bg-body: #272822;
+            --text-color: #f8f8f2;
+            --bg-sidebar: #3c3d36;
+            --border-sidebar: #5d5d5d;
+            --bg-toolbar: #3c3d36;
+            --border-toolbar: #5d5d5d;
+            --toolbar-text: #e6db74;
+            --btn-neutral-bg: #5d5d5d;
+            --btn-neutral-text: #f8f8f2;
+            --btn-neutral-hover-bg: #757575;
+            --bg-erd-container: #1b1c18;
+            --bg-table-box: #3c3d36;
+            --border-table-box: #5d5d5d;
+            --bg-table-header: #ae81ff;
+            --text-table-header: #fff;
+            --border-table-row: #5d5d5d;
+            --bg-table-head: #272822;
+            --text-table-head: #e6db74;
+            --text-pk: #fd971f;
+            --text-fk: #66d9ef;
+            --link-color: #e5e7eb;
+            --modal-bg: #3c3d36;
+            --modal-border: #5d5d5d;
+            --modal-text: #f8f8f2;
+            --highlight-color: #e6db74;
+        }
+
+        /* General styles using variables */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            background-color: var(--bg-body);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        #sidebar {
+            width: 250px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-sidebar);
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        
+        #main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #toolbar {
+            padding: 10px;
+            background-color: var(--bg-toolbar);
+            border-bottom: 1px solid var(--border-toolbar);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        
+        #toolbar-left {
+            margin-right: auto;
+            font-size: 14px;
+            color: var(--toolbar-text);
+            transition: color 0.3s;
+        }
+        
+        /* Common button styles */
+        .toolbar-btn {
+            padding: 8px 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+        
+        /* Neutral button (zoom in/out) */
+        .neutral-btn {
+            background-color: var(--btn-neutral-bg);
+            color: var(--btn-neutral-text);
+        }
+        .neutral-btn:hover {
+            background-color: var(--btn-neutral-hover-bg);
+        }
+        
+        /* Accent button (save) */
+        .primary-btn {
+            background-color: var(--text-fk);
+            color: #fff;
+        }
+        .primary-btn:hover {
+            background-color: color-mix(in srgb, var(--text-fk) 80%, black);
+        }
+
+        #erd-container {
+            flex-grow: 1;
+            padding: 20px;
+            position: relative;
+            background-color: var(--bg-erd-container);
+            overflow: auto;
+            transition: background-color 0.3s;
+        }
+
+        #pan-container {
+            position: relative;
+            transform-origin: 0 0;
+            cursor: grab;
+        }
+        
+        #link-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        #erd-canvas {
+            position: relative;
+            min-width: 100%;
+            min-height: 100%;
+            cursor: default;
+            z-index: 2;
+        }
+
+        .table-box {
+            background-color: var(--bg-table-box);
+            border: 1px solid var(--border-table-box);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            padding: 0;
+            margin: 10px;
+            display: inline-block;
+            position: absolute;
+            transform-origin: 0 0;
+            transition: box-shadow 0.2s ease-in-out, background-color 0.3s, border-color 0.3s, outline 0.3s;
+        }
+        .table-box:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        }
+        .table-box.highlight {
+            animation: highlight-pulse 1s ease-in-out infinite alternate;
+        }
+        
+        @keyframes highlight-pulse {
+            from {
+                outline: 2px solid transparent;
+                transform: scale(1.0);
+            }
+            to {
+                outline: 2px solid var(--highlight-color);
+                transform: scale(1.03);
+            }
+        }
+
+        .table-box h4 {
+            background-color: var(--bg-table-header);
+            color: var(--text-table-header);
+            margin: 0;
+            padding: 10px 15px;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: grab;
+            transition: background-color 0.3s;
+        }
+        
+        .table-box table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .table-box th,
+        .table-box td {
+            padding: 8px 15px;
+            text-align: left;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border-table-row);
+            transition: border-color 0.3s;
+        }
+
+        .table-box th {
+            background-color: var(--bg-table-head);
+            font-weight: 600;
+            color: var(--text-table-head);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        .table-box tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .pk-row td:first-child {
+            font-weight: bold;
+            color: var(--text-pk);
+        }
+
+        .fk-row td:first-child {
+            font-weight: bold;
+            color: var(--text-fk);
+        }
+
+        .link-line {
+            stroke: var(--link-color);
+            stroke-width: 2;
+            transition: stroke 0.3s;
+        }
+        
+        .link-head {
+            fill: var(--link-color);
+        }
+
+        /* Custom Modal Styling */
+        .modal {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background-color: var(--modal-bg);
+            padding: 24px;
+            border: 1px solid var(--modal-border);
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 2000;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--modal-text);
+            animation: fadein 0.3s ease-out;
+        }
+
+        .field-name {
+            font-size: 1rem;
+        }
+
+        .field-type {
+            font-size: 0.875rem;
+        }
+
+        @keyframes fadein {
+            from { opacity: 0; transform: translate(-50%, -60%); }
+            to   { opacity: 1; transform: translate(-50%, -50%); }
+        }
+
+        .modal.fadeout {
+            animation: fadeout 0.3s ease-in forwards;
+        }
+
+        @keyframes fadeout {
+            from { opacity: 1; transform: translate(-50%, -50%); }
+            to   { opacity: 0; transform: translate(-50%, -60%); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <h3 class="font-bold text-lg mb-2">Databases</h3>
+        <select id="schema-select" class="w-full p-2 border border-gray-300 rounded-lg bg-white text-gray-800 transition-colors" onchange="loadTables(this.value)">
+            <option value="">Select a database</option>
+        </select>
+        
+        <h3 class="font-bold text-lg mb-2 mt-4">Themes</h3>
+        <select id="theme-select" class="w-full p-2 border border-gray-300 rounded-lg bg-white text-gray-800 transition-colors" onchange="applyTheme(this.value)">
+            </select>
+        
+        <h3 class="font-bold text-lg mb-2 mt-4">Search</h3>
+        <div class="flex flex-col gap-2">
+            <input type="text" id="search-input" placeholder="테이블명 검색" class="w-full p-2 border border-gray-300 rounded-lg text-gray-800" />
+            <button id="search-btn" class="toolbar-btn neutral-btn">검색</button>
+        </div>
+
+        <h3 class="font-bold text-lg mb-2 mt-4">Tables</h3>
+        <p class="text-sm text-gray-500">
+            테이블을 클릭하면 이동할 수 있습니다.
+        </p>
+    </div>
+
+    <div id="main-content">
+        <div id="toolbar" class="flex items-center justify-between gap-2 p-3 border-b">
+            <p class="text-sm text-gray-400">powered by sherman</p>
+            <div class="flex items-center justify-end gap-2">
+                <button id="zoom-in" class="toolbar-btn neutral-btn">+</button>
+                <button id="zoom-out" class="toolbar-btn neutral-btn">-</button>
+                <button id="zoom-reset" class="toolbar-btn neutral-btn">Reset</button>
+                <button id="save-coords-btn" class="toolbar-btn primary-btn">좌표 저장</button>
+            </div>
+        </div>
+        <div id="erd-container" class="relative p-5 overflow-auto">
+            <div id="pan-container" class="absolute top-0 left-0 w-full h-full transform-origin-top-left cursor-grab">
+                <svg id="link-canvas" class="absolute top-0 left-0 w-full h-full pointer-events-none z-10"></svg>
+                <div id="erd-canvas" class="relative z-20"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3000/api';
+        const schemaSelect = document.getElementById('schema-select');
+        const themeSelect = document.getElementById('theme-select');
+        const erdContainer = document.getElementById('erd-container');
+        const panContainer = document.getElementById('pan-container');
+        const erdCanvas = document.getElementById('erd-canvas');
+        const linkCanvas = document.getElementById('link-canvas');
+        const zoomInBtn = document.getElementById('zoom-in');
+        const zoomOutBtn = document.getElementById('zoom-out');
+        const zoomResetBtn = document.getElementById('zoom-reset');
+        const saveCoordsBtn = document.getElementById('save-coords-btn');
+        const searchInput = document.getElementById('search-input');
+        const searchBtn = document.getElementById('search-btn');
+
+        let allTablesData = {};
+        let currentScale = 1;
+        const zoomStep = 0.2;
+
+        let isDragging = false;
+        let isPanning = false;
+        let activeElement = null;
+        let initialMouseX, initialMouseY;
+        let startPanX, startPanY;
+        let currentPanX = 0, currentPanY = 0;
+
+        const themes = {
+            'light-theme': 'Light Theme',
+            'dark-theme': 'Dark Theme',
+            'darcula-theme': 'Darcula',
+            'monokai-theme': 'Monokai'
+        };
+
+        function populateThemes() {
+            for (const key in themes) {
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = themes[key];
+                themeSelect.appendChild(option);
+            }
+        }
+
+        function applyTheme(themeName) {
+            const body = document.body;
+            // Remove all theme classes first
+            for (const key in themes) {
+                body.classList.remove(`theme-${key}`);
+            }
+            body.classList.add(`theme-${themeName}`);
+            localStorage.setItem('theme', themeName);
+            drawLinks(); // Re-draw links to update their color
+        }
+
+        function initializeTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light-theme';
+            const body = document.body;
+            body.classList.add(`theme-${savedTheme}`);
+            themeSelect.value = savedTheme;
+        }
+
+        async function loadSchemas() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/schemas`);
+                if (!response.ok) throw new Error('Network response was not ok.');
+                const schemas = await response.json();
+                schemas.forEach(schema => {
+                    const option = document.createElement('option');
+                    option.value = schema;
+                    option.textContent = schema;
+                    schemaSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Failed to load schemas:', error);
+                showModal("스키마를 불러오는 데 실패했습니다.");
+            }
+        }
+
+        async function loadTables(schema) {
+            erdCanvas.innerHTML = '';
+            linkCanvas.innerHTML = '';
+            allTablesData = {};
+            currentScale = 1;
+            panContainer.style.transform = `translate(0px, 0px) scale(1)`;
+            currentPanX = 0;
+            currentPanY = 0;
+
+            if (!schema) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/tables/${schema}`);
+                if (!response.ok) throw new Error('Network response was not ok.');
+                const tables = await response.json();
+
+                const tablePromises = tables.map(table =>
+                    fetch(`${API_BASE_URL}/columns/${schema}/${table}`)
+                        .then(res => {
+                            if (!res.ok) throw new Error(`Failed to load columns for table: ${table}`);
+                            return res.json();
+                        })
+                        .then(columns => {
+                            allTablesData[table] = {
+                                name: table,
+                                columns: columns,
+                                position: { x: 0, y: 0 },
+                                dimensions: { width: 0, height: 0 }
+                            };
+                        })
+                );
+
+                await Promise.all(tablePromises);
+                drawAllTablesAndLinks(schema);
+
+            } catch (error) {
+                console.error('Failed to load tables:', error);
+                showModal("테이블을 불러오는 데 실패했습니다.");
+            }
+        }
+
+        function drawAllTablesAndLinks(schema) {
+            erdCanvas.innerHTML = '';
+            linkCanvas.innerHTML = '';
+
+            const tables = Object.keys(allTablesData);
+            
+            const horizontalSpacing = 450;
+            const verticalSpacing = 300;
+            const tablesPerRow = 5;
+
+            const savedPositions = JSON.parse(localStorage.getItem(`erd-coords-${schema}`)) || {};
+
+            tables.forEach((tableName, index) => {
+                const tableData = allTablesData[tableName];
+                const tableBox = document.createElement('div');
+                tableBox.classList.add('table-box');
+                tableBox.id = `table-${tableName}`;
+                
+                let xPos, yPos;
+                if (savedPositions[tableName]) {
+                    xPos = savedPositions[tableName].x;
+                    yPos = savedPositions[tableName].y;
+                } else {
+                    const row = Math.floor(index / tablesPerRow);
+                    const col = index % tablesPerRow;
+                    xPos = col * horizontalSpacing + 50;
+                    yPos = row * verticalSpacing + 50;
+                }
+
+                tableData.position = { x: xPos, y: yPos };
+                tableBox.style.left = `${xPos}px`;
+                tableBox.style.top = `${yPos}px`;
+                tableBox.style.transform = `scale(1)`;
+
+                const tableHeader = document.createElement('h4');
+                tableHeader.textContent = tableName;
+                tableBox.appendChild(tableHeader);
+
+                const table = document.createElement('table');
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                headerRow.innerHTML = '<th>컬럼</th><th>코멘트</th><th>데이터 타입</th><th>Null 허용</th>';
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+
+                const tbody = document.createElement('tbody');
+                tableData.columns.forEach(col => {
+                    const colRow = document.createElement('tr');
+                    
+                    const dataType = `${col.type}${col.size ? `(${col.size})` : ''}`;
+                    
+                    let sPK = col.is_primary_key === 'true' ? '(pk)' : '';
+                    let sFK = col.is_foreign_key === 'true' ? '(fk)' : ''; 
+                    
+                    const columnName = `${col.name} ${sPK} ${sFK}`.trim();
+
+                    colRow.innerHTML = `<td class="p-2 flex items-center"><span class="font-semibold field-name truncate flex-grow">${columnName}</span></td><td>${col.comment || ''}</td><td>${dataType}</td><td>${col.is_nullable}</td>`;
+                    if (col.is_primary_key === 'true') {
+                        colRow.classList.add('pk-row');
+                    } else if (col.is_foreign_key === 'true') {
+                        colRow.classList.add('fk-row');
+                    }
+                    tbody.appendChild(colRow);
+                });
+                table.appendChild(tbody);
+                
+                tableBox.appendChild(table);
+
+                tableHeader.addEventListener('mousedown', (e) => {
+                    e.stopPropagation(); 
+                    
+                    isDragging = true;
+                    activeElement = tableBox;
+                    initialMouseX = e.clientX - tableData.position.x;
+                    initialMouseY = e.clientY - tableData.position.y;
+                    panContainer.style.cursor = 'default';
+                    activeElement.style.cursor = 'grabbing';
+                });
+                
+                erdCanvas.appendChild(tableBox);
+
+                // Wait for the element to be rendered to get correct dimensions
+                setTimeout(() => {
+                    tableData.dimensions.width = tableBox.offsetWidth;
+                    tableData.dimensions.height = tableBox.offsetHeight;
+                    drawLinks(); // Redraw links after all tables are positioned
+                }, 0);
+            });
+            adjustCanvasSize();
+            drawLinks();
+        }
+
+        function adjustCanvasSize() {
+            let maxRight = 0;
+            let maxBottom = 0;
+
+            for (const tableName in allTablesData) {
+                const tableData = allTablesData[tableName];
+                const right = tableData.position.x + tableData.dimensions.width;
+                const bottom = tableData.position.y + tableData.dimensions.height;
+                maxRight = Math.max(maxRight, right);
+                maxBottom = Math.max(maxBottom, bottom);
+            }
+            
+            // Add a buffer to ensure links don't get cut off
+            const buffer = 200; 
+            const newWidth = Math.max(erdContainer.clientWidth, maxRight + buffer);
+            const newHeight = Math.max(erdContainer.clientHeight, maxBottom + buffer);
+
+            erdCanvas.style.width = `${newWidth}px`;
+            erdCanvas.style.height = `${newHeight}px`;
+            
+            linkCanvas.style.width = erdCanvas.style.width;
+            linkCanvas.style.height = erdCanvas.style.height;
+        }
+
+        function drawLinks() {
+            linkCanvas.innerHTML = '';
+            const tables = Object.values(allTablesData);
+
+            // Get the stroke color from CSS variable
+            const linkColor = getComputedStyle(document.body).getPropertyValue('--link-color').trim();
+
+            const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+            marker.setAttribute('id', 'arrowhead');
+            marker.setAttribute('viewBox', '0 0 10 10');
+            marker.setAttribute('refX', '5');
+            marker.setAttribute('refY', '5');
+            marker.setAttribute('markerWidth', '6');
+            marker.setAttribute('markerHeight', '6');
+            marker.setAttribute('orient', 'auto');
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            path.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+            path.setAttribute('fill', linkColor);
+            marker.appendChild(path);
+            linkCanvas.appendChild(marker);
+
+            tables.forEach(table => {
+                const fkColumns = table.columns.filter(col => col.is_foreign_key === 'true');
+                
+                fkColumns.forEach(fkCol => {
+                    const fkTable = allTablesData[fkCol.referenced_table];
+                    if (!fkTable) return;
+
+                    const startTable = allTablesData[table.name];
+                    const endTable = allTablesData[fkTable.name];
+
+                    const startPos = getConnectorPoint(startTable, endTable);
+                    const endPos = getConnectorPoint(endTable, startTable);
+                    
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    line.setAttribute('x1', startPos.x);
+                    line.setAttribute('y1', startPos.y);
+                    line.setAttribute('x2', endPos.x);
+                    line.setAttribute('y2', endPos.y);
+                    line.setAttribute('stroke', linkColor);
+                    line.setAttribute('stroke-width', '2');
+                    line.setAttribute('marker-end', 'url(#arrowhead)');
+                    
+                    linkCanvas.appendChild(line);
+                });
+            });
+        }
+
+        function getConnectorPoint(table1, table2) {
+            const x1 = table1.position.x + table1.dimensions.width / 2;
+            const y1 = table1.position.y + table1.dimensions.height / 2;
+            const w1 = table1.dimensions.width;
+            const h1 = table1.dimensions.height;
+
+            const x2 = table2.position.x + table2.dimensions.width / 2;
+            const y2 = table2.position.y + table2.dimensions.height / 2;
+            
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            
+            let angle = Math.atan2(dy, dx);
+            if (angle < 0) angle += 2 * Math.PI;
+            
+            let point = {};
+            const side = Math.abs(Math.tan(angle));
+            
+            // Determine intersection point on the rectangle boundary
+            if (side * w1 < h1) {
+                // Intersects a vertical side
+                point.x = x1 + Math.sign(dx) * w1 / 2;
+                point.y = y1 + Math.sign(dx) * w1 / 2 * side;
+            } else {
+                // Intersects a horizontal side
+                point.x = x1 + Math.sign(dy) * h1 / 2 / side;
+                point.y = y1 + Math.sign(dy) * h1 / 2;
+            }
+
+            return point;
+        }
+
+        function updateZoom() {
+            panContainer.style.transform = `translate(${currentPanX}px, ${currentPanY}px) scale(${currentScale})`;
+            drawLinks();
+        }
+
+        function zoomIn() {
+            currentScale += zoomStep;
+            updateZoom();
+        }
+
+        function zoomOut() {
+            if (currentScale > zoomStep) {
+                currentScale -= zoomStep;
+                updateZoom();
+            }
+        }
+
+        function zoomReset() {
+            currentScale = 1;
+            currentPanX = 0;
+            currentPanY = 0;
+            updateZoom();
+        }
+
+        function saveTablePositions() {
+            const currentSchema = schemaSelect.value;
+            if (!currentSchema) {
+                showModal("저장할 스키마를 선택해주세요.");
+                return;
+            }
+            
+            const positionsToSave = {};
+            for (const tableName in allTablesData) {
+                positionsToSave[tableName] = {
+                    x: allTablesData[tableName].position.x,
+                    y: allTablesData[tableName].position.y
+                };
+            }
+            
+            localStorage.setItem(`erd-coords-${currentSchema}`, JSON.stringify(positionsToSave));
+            showModal("테이블 위치가 성공적으로 저장되었습니다!");
+        }
+
+        function searchTable() {
+            const searchTerm = searchInput.value.trim().toLowerCase();
+            if (!searchTerm) {
+                showModal("검색어를 입력해주세요.");
+                return;
+            }
+
+            let foundTable = null;
+            // Iterate through all tables to find a match
+            for (const tableName in allTablesData) {
+                // Check table name
+                if (tableName.toLowerCase().includes(searchTerm)) {
+                    foundTable = allTablesData[tableName];
+                    break;
+                }
+            }
+
+            if (foundTable) {
+                centerTableOnScreen(foundTable);
+                highlightTable(foundTable.name);
+            } else {
+                showModal("검색 결과가 없습니다.");
+            }
+        }
+
+        function centerTableOnScreen(tableData) {
+            const tableElement = document.getElementById(`table-${tableData.name}`);
+            if (!tableElement) return;
+
+            // Get viewport dimensions
+            const viewportWidth = erdContainer.clientWidth;
+            const viewportHeight = erdContainer.clientHeight;
+
+            // Use table dimensions from data object, which are calculated after rendering
+            const tableWidth = tableData.dimensions.width;
+            const tableHeight = tableData.dimensions.height;
+
+            // Calculate new pan coordinates to center the table
+            const newPanX = -tableData.position.x + (viewportWidth / 2) - (tableWidth / 2);
+            const newPanY = -tableData.position.y + (viewportHeight / 2) - (tableHeight / 2);
+
+            // Update pan container transform and scale
+            currentPanX = newPanX;
+            currentPanY = newPanY;
+
+            panContainer.style.transition = 'transform 0.5s ease-in-out';
+            updateZoom();
+
+            // Remove transition after animation
+            setTimeout(() => {
+                panContainer.style.transition = '';
+            }, 500);
+        }
+
+        function highlightTable(tableName) {
+            const tableElement = document.getElementById(`table-${tableName}`);
+            if (tableElement) {
+                // Remove existing highlights
+                document.querySelectorAll('.table-box.highlight').forEach(el => {
+                    el.classList.remove('highlight');
+                    // Force reflow to restart animation if needed
+                    void el.offsetWidth;
+                });
+                // Add highlight to the found table
+                tableElement.classList.add('highlight');
+            }
+        }
+
+        // Custom modal UI instead of alert()
+        function showModal(message) {
+            const modal = document.createElement('div');
+            modal.classList.add('modal');
+            modal.textContent = message;
+
+            document.body.appendChild(modal);
+            
+            setTimeout(() => {
+                modal.classList.add('fadeout');
+                modal.addEventListener('animationend', () => modal.remove());
+            }, 2000);
+        }
+
+        // Event listeners
+        zoomInBtn.addEventListener('click', zoomIn);
+        zoomOutBtn.addEventListener('click', zoomOut);
+        zoomResetBtn.addEventListener('click', zoomReset);
+        saveCoordsBtn.addEventListener('click', saveTablePositions);
+        searchBtn.addEventListener('click', searchTable);
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                searchTable();
+            }
+        });
+        
+        erdContainer.addEventListener('mousedown', (e) => {
+            // Check if the click is on a table header or anywhere else
+            if (e.target.closest('.table-box')) {
+                // If it's a table, dragging logic is handled by tableHeader's mousedown listener
+                return;
+            } else {
+                // Otherwise, enable panning
+                isPanning = true;
+                startPanX = e.clientX;
+                startPanY = e.clientY;
+                panContainer.style.cursor = 'grabbing';
+            }
+        });
+
+        let isTicking = false;
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging && activeElement) {
+                const tableData = allTablesData[activeElement.id.replace('table-', '')];
+                tableData.position.x = e.clientX - initialMouseX;
+                tableData.position.y = e.clientY - initialMouseY;
+
+                if (!isTicking) {
+                    window.requestAnimationFrame(() => {
+                        activeElement.style.left = `${tableData.position.x}px`;
+                        activeElement.style.top = `${tableData.position.y}px`;
+                        isTicking = false;
+                    });
+                    isTicking = true;
+                }
+            } else if (isPanning) {
+                const dx = e.clientX - startPanX;
+                const dy = e.clientY - startPanY;
+                panContainer.style.transform = `translate(${currentPanX + dx}px, ${currentPanY + dy}px) scale(${currentScale})`;
+            }
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (isDragging) {
+                isDragging = false;
+                if (activeElement) {
+                    activeElement.style.cursor = 'move';
+                    adjustCanvasSize();
+                    drawLinks();
+                    activeElement = null; 
+                }
+            } else if (isPanning) {
+                isPanning = false;
+                currentPanX += e.clientX - startPanX;
+                currentPanY += e.clientY - startPanY;
+                panContainer.style.cursor = 'grab';
+            }
+        });
+        
+        // This listener ensures that if the mouse leaves the document while dragging, the dragging stops.
+        document.addEventListener('mouseleave', () => {
+            if (isDragging) {
+                isDragging = false;
+                if (activeElement) {
+                    activeElement.style.cursor = 'move';
+                    // 🚀 Defer expensive operations until the drag is complete
+                    adjustCanvasSize();
+                    drawLinks();
+                    activeElement = null;
+                }
+            }
+            isPanning = false;
+            panContainer.style.cursor = 'grab';
+        });
+
+        // Event listener for clicking a table name in the sidebar
+        document.addEventListener('click', (e) => {
+            if (e.target.matches('#sidebar .table-link')) {
+                const tableName = e.target.getAttribute('data-table-name');
+                const tableData = allTablesData[tableName];
+                if (tableData) {
+                    centerTableOnScreen(tableData);
+                    highlightTable(tableData.name);
+                }
+            }
+        });
+
+        // Event listener for a table name click
+        erdCanvas.addEventListener('click', (e) => {
+            const tableBox = e.target.closest('.table-box');
+            if (tableBox) {
+                const tableName = tableBox.id.replace('table-', '');
+                highlightTable(tableName);
+            }
+        });
+
+        // Initialize
+        populateThemes();
+        initializeTheme();
+        loadSchemas();
+    </script>
+</body>
+</html>
